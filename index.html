@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SlideGen Pro - AI Presentation Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        .page {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+        }
+
+        .page.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 1;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo h1 {
+            color: #FF8C00;
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .logo p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            color: #333;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .input-group input,
+        .input-group textarea,
+        .input-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus,
+        .input-group textarea:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #FFD700;
+            box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+        }
+
+        .input-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .input-group small {
+            color: #999;
+            font-size: 12px;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #FFD700 0%, #FF8C00 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(255, 215, 0, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .link-button {
+            background: none;
+            border: none;
+            color: #FF8C00;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: underline;
+            margin-top: 15px;
+            display: block;
+            text-align: center;
+            width: 100%;
+        }
+
+        .link-button:hover {
+            color: #FFD700;
+        }
+
+        .generations-counter {
+            background: linear-gradient(135deg, #FFD700 0%, #FF8C00 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .generations-counter h3 {
+            font-size: 14px;
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+
+        .generations-counter .count {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .upgrade-banner {
+            background: #ffd700;
+            color: #333;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-content h2 {
+            color: #FF8C00;
+            margin-bottom: 15px;
+        }
+
+        .modal-content p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #FFD700;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        .success-message {
+            background: #efe;
+            color: #3c3;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .success-message.active {
+            display: block;
+        }
+
+        .theme-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .theme-option {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .theme-option:hover {
+            border-color: #FFD700;
+            background: #FFFACD;
+        }
+
+        .theme-option.selected {
+            border-color: #FFD700;
+            background: #FFD700;
+            color: white;
+        }
+
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+
+        .step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+
+        .step::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            width: 100%;
+            height: 2px;
+            background: #e0e0e0;
+            z-index: -1;
+        }
+
+        .step:first-child::before {
+            display: none;
+        }
+
+        .step-circle {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 5px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .step.active .step-circle {
+            background: #FFD700;
+        }
+
+        .step.completed .step-circle {
+            background: #4caf50;
+        }
+
+        .step-label {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .step.active .step-label {
+            color: #FF8C00;
+            font-weight: 600;
+        }
+
+        /* Theme selector styles */
+        .theme-card {
+            border: 3px solid #e0e0e0;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .theme-card:hover {
+            border-color: #FFD700;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .theme-card.selected {
+            border-color: #FFD700;
+            box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.3);
+        }
+
+        .theme-carousel {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .theme-preview-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .theme-preview-img.active {
+            display: block;
+        }
+
+        .carousel-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: background 0.2s;
+        }
+
+        .carousel-btn:hover {
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .carousel-btn.prev-btn {
+            left: 8px;
+        }
+
+        .carousel-btn.next-btn {
+            right: 8px;
+        }
+
+        .carousel-counter {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .theme-name {
+            padding: 12px;
+            text-align: center;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+            background: white;
+        }
+
+        .theme-card.selected .theme-name {
+            background: #FFD700;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sign In Page -->
+    <div id="signin-page" class="page active">
+        <div class="card">
+            <div class="logo">
+                <h1>SlideGen Pro</h1>
+                <p>AI-Powered Presentation Generator</p>
+            </div>
+            
+            <div id="signin-error" class="error-message"></div>
+            
+            <form id="signin-form">
+                <div class="input-group">
+                    <label for="signin-email">Email</label>
+                    <input type="email" id="signin-email" required placeholder="your@email.com">
+                </div>
+                
+                <div class="input-group">
+                    <label for="signin-password">Password</label>
+                    <input type="password" id="signin-password" required placeholder="Enter your password">
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Sign In</button>
+            </form>
+            
+            <button class="link-button" onclick="showPage('signup-page')">Create Account</button>
+        </div>
+    </div>
+
+    <!-- Sign Up Page -->
+    <div id="signup-page" class="page">
+        <div class="card">
+            <div class="logo">
+                <h1>Create Account</h1>
+                <p>Subscribe to start creating presentations!</p>
+            </div>
+            
+            <div id="signup-error" class="error-message"></div>
+            
+            <form id="signup-form">
+                <div class="input-group">
+                    <label for="signup-email">Email</label>
+                    <input type="email" id="signup-email" required placeholder="your@email.com">
+                </div>
+                
+                <div class="input-group">
+                    <label for="signup-password">Password</label>
+                    <input type="password" id="signup-password" required placeholder="At least 6 characters">
+                    <small>Password must be at least 6 characters</small>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Create Account</button>
+            </form>
+            
+            <button class="link-button" onclick="showPage('signin-page')">Already have an account? Sign In</button>
+        </div>
+    </div>
+
+    <!-- Main Topic Page -->
+    <div id="topic-page" class="page">
+        <div class="card">
+            <div class="logo">
+                <h1>Create Presentation</h1>
+            </div>
+            
+            <div id="generations-display" class="generations-counter">
+                <h3>Generations Remaining</h3>
+                <div class="count">-</div>
+            </div>
+            
+            <div id="upgrade-banner" class="upgrade-banner" style="display: none;">
+                🌟 Subscribe for only $5.99/month and get 10 presentations per month!
+                <button class="btn btn-primary" style="margin-top: 10px;" onclick="upgradeSubscription()">Subscribe Now</button>
+            </div>
+            
+            <div id="topic-error" class="error-message"></div>
+            
+            <form id="topic-form">
+                <div class="input-group">
+                    <label for="topic">What would you like your presentation to be about?</label>
+                    <textarea id="topic" placeholder="E.g., The History of Space Exploration, Climate Change Solutions, Marketing Strategies for Small Businesses..."></textarea>
+                </div>
+
+                <div class="input-group" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 20px;">📄</span>
+                        <span>Or upload a document/PDF to create presentation from</span>
+                    </label>
+                    <input type="file" id="document-upload" accept=".pdf,.doc,.docx,.txt" style="margin-top: 10px;">
+                    <small style="display: block; margin-top: 8px; color: #666;">Upload a PDF, Word document, or text file. AI will read the content and create a presentation from it.</small>
+                    <div id="file-status" style="margin-top: 10px; font-weight: bold;"></div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Next</button>
+                <button type="button" class="btn btn-secondary" onclick="logout()">Logout</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Title Page -->
+    <div id="title-page" class="page">
+        <div class="card">
+            <div class="progress-steps">
+                <div class="step completed">
+                    <div class="step-circle">✓</div>
+                    <div class="step-label">Topic</div>
+                </div>
+                <div class="step active">
+                    <div class="step-circle">2</div>
+                    <div class="step-label">Title</div>
+                </div>
+                <div class="step">
+                    <div class="step-circle">3</div>
+                    <div class="step-label">Format</div>
+                </div>
+                <div class="step">
+                    <div class="step-circle">4</div>
+                    <div class="step-label">Generate</div>
+                </div>
+            </div>
+            
+            <div class="logo">
+                <h1>Presentation Title</h1>
+            </div>
+            
+            <form id="title-form">
+                <div class="input-group">
+                    <label for="presentation-title">Enter your presentation title</label>
+                    <input type="text" id="presentation-title" required placeholder="My Awesome Presentation">
+                    <small>This will be the title of your presentation and filename</small>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Next</button>
+                <button type="button" class="btn btn-secondary" onclick="showPage('topic-page')">Back</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Formatting Page -->
+    <div id="format-page" class="page">
+        <div class="card">
+            <div class="progress-steps">
+                <div class="step completed">
+                    <div class="step-circle">✓</div>
+                    <div class="step-label">Topic</div>
+                </div>
+                <div class="step completed">
+                    <div class="step-circle">✓</div>
+                    <div class="step-label">Title</div>
+                </div>
+                <div class="step active">
+                    <div class="step-circle">3</div>
+                    <div class="step-label">Format</div>
+                </div>
+                <div class="step">
+                    <div class="step-circle">4</div>
+                    <div class="step-label">Generate</div>
+                </div>
+            </div>
+            
+            <div class="logo">
+                <h1>Format Options</h1>
+            </div>
+            
+            <form id="format-form">
+                <div class="input-group">
+                    <label for="num-slides">Number of Slides</label>
+                    <input type="number" id="num-slides" min="3" max="20" value="10" required>
+                    <small>Maximum slides: 20</small>
+                </div>
+                
+                <div class="input-group">
+                    <label>Choose Your Theme</label>
+                    <small style="display: block; margin-bottom: 15px;">Click on a theme to see preview images and select it</small>
+                    <div id="theme-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 10px;">
+                        <!-- Themes will be loaded here -->
+                    </div>
+                    <input type="hidden" id="selected-theme" value="Business Black and Yellow">
+                </div>
+
+                <div class="input-group" style="background: #e3f2fd; padding: 15px; border-radius: 8px; border-left: 4px solid #2196F3;">
+                    <label style="color: #1976D2; display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 20px;">🔄</span>
+                        <span>Convert to Google Slides</span>
+                    </label>
+                    <small style="color: #555; display: block; margin-top: 8px;">
+                        Your presentation will download as PowerPoint (.pptx). To use in Google Slides:<br>
+                        1. Go to <strong>drive.google.com</strong><br>
+                        2. Click <strong>"New" → "File upload"</strong><br>
+                        3. Select your downloaded .pptx file<br>
+                        4. Google Drive will automatically convert it to Google Slides!
+                    </small>
+                </div>
+                
+                <div class="input-group">
+                    <label>Slide Format</label>
+                    <select id="slide-format" required>
+                        <option value="Detailed">Detailed - Full bullet points with details</option>
+                        <option value="Concise">Concise - Short phrases, one sentence max</option>
+                    </select>
+                    <small>Concise: Brief phrases without punctuation. Detailed: Complete sentences with context.</small>
+                </div>
+                
+                <div class="input-group">
+                    <label>Speaker Notes Style</label>
+                    <select id="notes-style" required>
+                        <option value="Detailed">Detailed - Balanced talking points</option>
+                        <option value="Concise">Concise - Brief 2-3 sentence notes</option>
+                    </select>
+                    <small>Choose how much detail you want in your presenter notes</small>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Generate Presentation</button>
+                <button type="button" class="btn btn-secondary" onclick="showPage('title-page')">Back</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Generation/Loading Page -->
+    <div id="generating-page" class="page">
+        <div class="card">
+            <div class="logo">
+                <h1>Creating Your Presentation</h1>
+            </div>
+            
+            <div class="loading active">
+                <div class="spinner"></div>
+                <p>Researching your topic and generating slides...</p>
+                <p style="color: #999; font-size: 14px; margin-top: 10px;">This may take a minute</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Completion Page -->
+    <div id="complete-page" class="page">
+        <div class="card">
+            <div class="progress-steps">
+                <div class="step completed">
+                    <div class="step-circle">✓</div>
+                    <div class="step-label">Topic</div>
+                </div>
+                <div class="step completed">
+                    <div class="step-circle">✓</div>
+                    <div class="step-label">Title</div>
+                </div>
+                <div class="step completed">
+                    <div class="step-circle">✓</div>
+                    <div class="step-label">Format</div>
+                </div>
+                <div class="step completed">
+                    <div class="step-circle">✓</div>
+                    <div class="step-label">Generate</div>
+                </div>
+            </div>
+            
+            <div class="logo">
+                <h1>✓ Presentation Complete!</h1>
+                <p>Your presentation has been generated successfully</p>
+            </div>
+            
+            <div class="success-message active" style="margin-top: 20px;">
+                Your presentation "<span id="complete-title"></span>" is ready!
+            </div>
+            
+            <button class="btn btn-primary" onclick="downloadPresentation()">View & Download Presentation</button>
+            <button class="btn btn-secondary" onclick="goHome()">Create Another Presentation</button>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="modal">
+        <div class="modal-content">
+            <h2>✓ Success!</h2>
+            <p id="modal-message">Operation completed successfully</p>
+            <button class="btn btn-primary" onclick="closeModal()">OK</button>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="error-modal" class="modal">
+        <div class="modal-content">
+            <h2>⚠️ Error</h2>
+            <p id="error-modal-message">An error occurred</p>
+            <button class="btn btn-primary" onclick="closeModal()">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        // Use window.location.origin for production, fallback to localhost for development
+        const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3000'
+            : window.location.origin;
+        let currentUser = null;
+        let presentationData = {
+            topic: '',
+            title: '',
+            numSlides: 10,
+            theme: 'Business Black and Yellow',
+            slideFormat: 'Detailed',
+            notesStyle: 'Detailed',
+            sections: [],
+            customStyle: null  // Will store AI-generated custom theme
+        };
+
+        // Page navigation with fade effect
+        function showPage(pageId) {
+            const pages = document.querySelectorAll('.page');
+            pages.forEach(page => {
+                if (page.classList.contains('active')) {
+                    page.style.opacity = '0';
+                    setTimeout(() => {
+                        page.classList.remove('active');
+                    }, 500);
+                }
+            });
+            
+            setTimeout(() => {
+                const targetPage = document.getElementById(pageId);
+                targetPage.classList.add('active');
+                setTimeout(() => {
+                    targetPage.style.opacity = '1';
+                }, 50);
+            }, 500);
+        }
+
+        // Modal functions
+        function showSuccessModal(message) {
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('success-modal').classList.add('active');
+        }
+
+        function showErrorModal(message) {
+            document.getElementById('error-modal-message').textContent = message;
+            document.getElementById('error-modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.classList.remove('active');
+            });
+        }
+
+        // Authentication functions
+        document.getElementById('signin-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('signin-email').value;
+            const password = document.getElementById('signin-password').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentUser = data.user;
+                    updateGenerationsDisplay();
+                    showPage('topic-page');
+                } else {
+                    document.getElementById('signin-error').textContent = data.error;
+                    document.getElementById('signin-error').classList.add('active');
+                }
+            } catch (error) {
+                showErrorModal('Connection error. Please try again.');
+            }
+        });
+
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/api/auth/signup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentUser = data.user;
+                    showSuccessModal('Account created successfully! Subscribe now to start creating presentations.');
+                    setTimeout(() => {
+                        closeModal();
+                        updateGenerationsDisplay();
+                        showPage('topic-page');
+                    }, 2000);
+                } else {
+                    document.getElementById('signup-error').textContent = data.error;
+                    document.getElementById('signup-error').classList.add('active');
+                }
+            } catch (error) {
+                showErrorModal('Connection error. Please try again.');
+            }
+        });
+
+        async function logout() {
+            try {
+                await fetch(`${API_URL}/api/auth/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                currentUser = null;
+                showPage('signin-page');
+            } catch (error) {
+                showErrorModal('Logout failed. Please try again.');
+            }
+        }
+
+        function updateGenerationsDisplay() {
+            if (currentUser) {
+                const remaining = currentUser.generations_limit - currentUser.generations_used;
+                document.querySelector('.generations-counter .count').textContent = remaining;
+                
+                if (currentUser.subscription_status === 'free' && remaining === 0) {
+                    document.getElementById('upgrade-banner').style.display = 'block';
+                }
+            }
+        }
+
+        async function upgradeSubscription() {
+            try {
+                const response = await fetch(`${API_URL}/api/subscription/upgrade`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showSuccessModal('Successfully subscribed! You now have 10 presentations per month.');
+                    currentUser.subscription_status = 'premium';
+                    currentUser.generations_limit = 10;
+                    currentUser.generations_used = 0;
+                    updateGenerationsDisplay();
+                    document.getElementById('upgrade-banner').style.display = 'none';
+                } else{
+                    showErrorModal(data.error);
+                }
+            } catch (error) {
+                showErrorModal('Upgrade failed. Please try again.');
+            }
+        }
+
+        // Topic form
+        document.getElementById('topic-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const topicInput = document.getElementById('topic').value.trim();
+            const fileInput = document.getElementById('document-upload');
+            const fileStatus = document.getElementById('file-status');
+
+            // Check if file is uploaded
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                fileStatus.textContent = 'Uploading and extracting text from document...';
+                fileStatus.style.color = '#007bff';
+
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    const response = await fetch(`${API_URL}/api/upload-document`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        presentationData.topic = data.extracted_text;
+                        fileStatus.textContent = '✓ Document uploaded successfully!';
+                        fileStatus.style.color = '#28a745';
+                        setTimeout(() => showPage('title-page'), 500);
+                    } else {
+                        fileStatus.textContent = '✗ Error: ' + (data.error || 'Failed to extract text');
+                        fileStatus.style.color = '#dc3545';
+                    }
+                } catch (error) {
+                    fileStatus.textContent = '✗ Upload failed. Please try again.';
+                    fileStatus.style.color = '#dc3545';
+                }
+            } else if (topicInput) {
+                // No file uploaded, use text input
+                presentationData.topic = topicInput;
+                showPage('title-page');
+            } else {
+                showErrorModal('Please enter a topic or upload a document');
+            }
+        });
+
+        // Title form
+        document.getElementById('title-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            presentationData.title = document.getElementById('presentation-title').value;
+            loadThemes(); // Load themes when navigating to format page
+            showPage('format-page');
+        });
+
+        // Load and display theme previews
+        async function loadThemes() {
+            try {
+                const response = await fetch(`${API_URL}/api/themes/list`);
+                const data = await response.json();
+
+                const themeGrid = document.getElementById('theme-grid');
+                themeGrid.innerHTML = ''; // Clear existing content
+
+                if (!data.themes || data.themes.length === 0) {
+                    themeGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #999;">No themes found. Add preview images to the theme-previews folder.</p>';
+                    return;
+                }
+
+                data.themes.forEach((theme, index) => {
+                    const themeCard = document.createElement('div');
+                    themeCard.className = 'theme-card';
+                    if (index === 0 || theme.name === presentationData.theme) {
+                        themeCard.classList.add('selected');
+                        document.getElementById('selected-theme').value = theme.name;
+                    }
+
+                    // Create image carousel container
+                    const carouselContainer = document.createElement('div');
+                    carouselContainer.className = 'theme-carousel';
+
+                    // Add preview images
+                    theme.previews.forEach((preview, previewIndex) => {
+                        const img = document.createElement('img');
+                        img.src = `http://localhost:3000${preview}`;
+                        img.alt = `${theme.name} preview ${previewIndex + 1}`;
+                        img.className = 'theme-preview-img';
+                        if (previewIndex === 0) img.classList.add('active');
+                        carouselContainer.appendChild(img);
+                    });
+
+                    // Add carousel navigation if multiple images
+                    if (theme.previews.length > 1) {
+                        const prevBtn = document.createElement('button');
+                        prevBtn.type = 'button';  // Prevent form submission
+                        prevBtn.className = 'carousel-btn prev-btn';
+                        prevBtn.innerHTML = '‹';
+                        prevBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            navigateCarousel(carouselContainer, -1);
+                        };
+
+                        const nextBtn = document.createElement('button');
+                        nextBtn.type = 'button';  // Prevent form submission
+                        nextBtn.className = 'carousel-btn next-btn';
+                        nextBtn.innerHTML = '›';
+                        nextBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            navigateCarousel(carouselContainer, 1);
+                        };
+
+                        carouselContainer.appendChild(prevBtn);
+                        carouselContainer.appendChild(nextBtn);
+
+                        // Add image counter
+                        const counter = document.createElement('div');
+                        counter.className = 'carousel-counter';
+                        counter.textContent = `1 / ${theme.previews.length}`;
+                        carouselContainer.appendChild(counter);
+                    }
+
+                    // Theme name
+                    const themeName = document.createElement('div');
+                    themeName.className = 'theme-name';
+                    themeName.textContent = theme.name;
+
+                    // Add click handler to select theme
+                    themeCard.onclick = () => selectTheme(theme.name, themeCard);
+
+                    themeCard.appendChild(carouselContainer);
+                    themeCard.appendChild(themeName);
+                    themeGrid.appendChild(themeCard);
+                });
+            } catch (error) {
+                console.error('Error loading themes:', error);
+                document.getElementById('theme-grid').innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #c33;">Failed to load themes. Please try again.</p>';
+            }
+        }
+
+        // Navigate carousel
+        function navigateCarousel(carousel, direction) {
+            const images = carousel.querySelectorAll('.theme-preview-img');
+            let currentIndex = Array.from(images).findIndex(img => img.classList.contains('active'));
+
+            images[currentIndex].classList.remove('active');
+            currentIndex = (currentIndex + direction + images.length) % images.length;
+            images[currentIndex].classList.add('active');
+
+            // Update counter
+            const counter = carousel.querySelector('.carousel-counter');
+            if (counter) {
+                counter.textContent = `${currentIndex + 1} / ${images.length}`;
+            }
+        }
+
+        // Select theme
+        function selectTheme(themeName, themeCard) {
+            // Remove selected class from all cards
+            document.querySelectorAll('.theme-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            // Add selected class to clicked card
+            themeCard.classList.add('selected');
+
+            // Update hidden input
+            document.getElementById('selected-theme').value = themeName;
+            presentationData.theme = themeName;
+        }
+
+        // Format form and generation
+        document.getElementById('format-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            presentationData.numSlides = parseInt(document.getElementById('num-slides').value);
+            presentationData.slideFormat = document.getElementById('slide-format').value;
+            presentationData.notesStyle = document.getElementById('notes-style').value;
+
+            // Get selected theme from hidden input
+            presentationData.theme = document.getElementById('selected-theme').value;
+            presentationData.customStyle = null;
+
+            if (presentationData.numSlides > 20) {
+                showErrorModal('Maximum 20 slides allowed');
+                return;
+            }
+
+            showPage('generating-page');
+            
+            try {
+                // Research topic with notes_style
+                const response = await fetch(`${API_URL}/api/research`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        topic: presentationData.topic,
+                        num_slides: presentationData.numSlides,
+                        slide_format: presentationData.slideFormat,
+                        notes_style: presentationData.notesStyle
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    presentationData.sections = data.sections;
+
+                    // Save to sessionStorage for persistence
+                    console.log('Saving presentation data to sessionStorage');
+                    sessionStorage.setItem('presentationData', JSON.stringify(presentationData));
+
+                    // Mark presentation as complete
+                    await fetch(`${API_URL}/api/presentations/complete`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify(presentationData)
+                    });
+
+                    // Update user data
+                    const userResponse = await fetch(`${API_URL}/api/auth/me`, {
+                        credentials: 'include'
+                    });
+                    const userData = await userResponse.json();
+                    currentUser = userData.user;
+
+                    document.getElementById('complete-title').textContent = presentationData.title;
+                    showPage('complete-page');
+
+                    // AUTOMATICALLY DOWNLOAD AFTER showing complete page - Don't let download errors affect generation
+                    console.log('Auto-downloading presentation immediately...');
+                    setTimeout(async () => {
+                        try {
+                            const downloadResponse = await fetch(`${API_URL}/api/presentations/generate-pptx`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                body: JSON.stringify({
+                                    title: presentationData.title,
+                                    topic: presentationData.topic,
+                                    sections: presentationData.sections,
+                                    theme: presentationData.theme,
+                                    notesStyle: presentationData.notesStyle,
+                                    customStyle: presentationData.customStyle
+                                })
+                            });
+
+                            if (downloadResponse.ok) {
+                                const blob = await downloadResponse.blob();
+                                const url = window.URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = `${presentationData.title}.pptx`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                window.URL.revokeObjectURL(url);
+                                console.log('✓ Download completed successfully');
+                                showSuccessModal('PowerPoint presentation downloaded successfully!');
+                            } else {
+                                console.error('Download failed:', downloadResponse.status);
+                                showErrorModal('Download failed. Please use the "View & Download Presentation" button to try again.');
+                            }
+                        } catch (downloadError) {
+                            console.error('Download error:', downloadError);
+                            showErrorModal('Download failed. Please use the "View & Download Presentation" button to try again.');
+                        }
+                    }, 500); // Small delay to let page transition complete
+                } else {
+                    showErrorModal(data.error);
+                    showPage('format-page');
+                }
+            } catch (error) {
+                showErrorModal('Generation failed. Please try again.');
+                showPage('format-page');
+            }
+        });
+
+        function downloadPresentation() {
+            console.log('=== DOWNLOAD BUTTON CLICKED ===');
+
+            // Try to restore from sessionStorage if data is missing
+            if (!presentationData || !presentationData.sections || presentationData.sections.length === 0) {
+                console.log('presentationData missing, attempting to restore from sessionStorage...');
+                const savedData = sessionStorage.getItem('presentationData');
+                if (savedData) {
+                    try {
+                        presentationData = JSON.parse(savedData);
+                        console.log('✓ Restored presentation data from sessionStorage');
+                    } catch (e) {
+                        console.error('Failed to parse saved presentation data:', e);
+                    }
+                }
+            }
+
+            console.log('Presentation data:', JSON.stringify(presentationData, null, 2));
+            console.log('Sections count:', presentationData?.sections?.length);
+            console.log('Theme:', presentationData?.theme);
+            console.log('Title:', presentationData?.title);
+
+            // Check if we have the required data
+            if (!presentationData) {
+                console.error('ERROR: presentationData is null/undefined');
+                showErrorModal('Presentation data is missing. Please create a new presentation.');
+                return;
+            }
+
+            if (!presentationData.sections) {
+                console.error('ERROR: presentationData.sections is missing');
+                showErrorModal('Presentation sections are missing. Please create a new presentation.');
+                return;
+            }
+
+            if (presentationData.sections.length === 0) {
+                console.error('ERROR: presentationData.sections is empty');
+                showErrorModal('Presentation has no sections. Please create a new presentation.');
+                return;
+            }
+
+            console.log('✓ All data validation passed');
+            console.log(`✓ Proceeding with download - Title: ${presentationData.title}, Sections: ${presentationData.sections.length}, Theme: ${presentationData.theme}`);
+
+            // Show loading modal
+            showPage('generating-page');
+            document.querySelector('#generating-page h2').textContent = 'Generating PowerPoint...';
+            document.querySelector('#generating-page p').innerHTML = 'Creating your presentation...<br>This should take just a few seconds...';
+
+            // Generate and download the actual PowerPoint file
+            const dataToSend = {
+                title: presentationData.title || 'Presentation',
+                topic: presentationData.topic || '',
+                sections: presentationData.sections || [],
+                theme: presentationData.theme || 'Business Black and Yellow',
+                notesStyle: presentationData.notesStyle || 'Detailed',
+                customStyle: presentationData.customStyle  // Include custom style if generated
+            };
+
+            console.log('Sending download request to:', `${API_URL}/api/presentations/generate-pptx`);
+            console.log('Data being sent:', JSON.stringify(dataToSend, null, 2));
+            console.log('Request body size:', JSON.stringify(dataToSend).length, 'bytes');
+
+            console.log('Starting fetch request...');
+            fetch(`${API_URL}/api/presentations/generate-pptx`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(dataToSend)
+            })
+            .then(response => {
+                console.log('=== RESPONSE RECEIVED ===');
+                console.log('Status:', response.status);
+                console.log('Status Text:', response.statusText);
+                console.log('Headers:', response.headers);
+                console.log('OK:', response.ok);
+
+                if (!response.ok) {
+                    console.error('Response not OK, trying to parse error...');
+                    return response.json().then(err => {
+                        console.error('Error from server:', err);
+                        throw new Error(err.error || 'Failed to generate presentation');
+                    });
+                }
+                console.log('Response OK, converting to blob...');
+                return response.blob();
+            })
+            .then(blob => {
+                console.log('=== BLOB RECEIVED ===');
+                console.log('Blob size:', blob.size, 'bytes');
+                console.log('Blob type:', blob.type);
+
+                if (blob.size === 0) {
+                    throw new Error('Received empty file from server');
+                }
+
+                console.log('Creating download link...');
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${presentationData.title}.pptx`;
+                document.body.appendChild(link);
+                console.log('Clicking download link...');
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                console.log('✓ Download triggered successfully');
+
+                // Show success and go back to complete page
+                showPage('complete-page');
+                showSuccessModal('PowerPoint presentation downloaded successfully!');
+            })
+            .catch(error => {
+                console.error('=== DOWNLOAD ERROR ===');
+                console.error('Error type:', error.name);
+                console.error('Error message:', error.message);
+                console.error('Error stack:', error.stack);
+                showPage('complete-page');
+                showErrorModal('Failed to download presentation: ' + error.message);
+            });
+        }
+
+        function goHome() {
+            // Reset form
+            document.getElementById('topic').value = '';
+            document.getElementById('presentation-title').value = '';
+            document.getElementById('num-slides').value = 10;
+            
+            updateGenerationsDisplay();
+            showPage('topic-page');
+        }
+
+        // Check authentication on load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_URL}/api/auth/me`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.user;
+                    updateGenerationsDisplay();
+                    showPage('topic-page');
+                }
+            } catch (error) {
+                // User not authenticated, stay on signin page
+            }
+        });
+    </script>
+</body>
+</html>

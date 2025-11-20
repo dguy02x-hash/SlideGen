@@ -1,0 +1,480 @@
+<!-- 
+=====================================================
+PAYMENT INTEGRATION - HTML ADDITIONS
+=====================================================
+
+Add these sections to your existing index.html file
+
+=====================================================
+1. ADD TO <head> SECTION
+=====================================================
+-->
+
+<!-- Stripe.js Library -->
+<script src="https://js.stripe.com/v3/"></script>
+
+<!-- 
+=====================================================
+2. ADD SUBSCRIPTION STATUS DISPLAY (After login)
+=====================================================
+-->
+
+<div id="subscriptionStatus" style="display: none;" class="subscription-banner">
+    <div class="subscription-info">
+        <span id="subscriptionTier">Free Plan</span>
+        <span id="generationsCounter">0 / 1 presentations used</span>
+        <button id="upgradeBtn" class="upgrade-btn" onclick="handleUpgrade()">
+            ⭐ Upgrade to Premium - $6.99/month
+        </button>
+        <button id="cancelSubBtn" class="cancel-btn" onclick="handleCancelSubscription()" style="display: none;">
+            Cancel Subscription
+        </button>
+    </div>
+</div>
+
+<!-- 
+=====================================================
+3. ADD PAYMENT SUCCESS/CANCEL PAGES
+=====================================================
+-->
+
+<!-- Payment Success Page -->
+<div id="paymentSuccessPage" class="page" style="display: none;">
+    <div class="success-container">
+        <h1>🎉 Welcome to Premium!</h1>
+        <p>Your subscription is now active.</p>
+        <ul>
+            <li>✅ 10 presentations per month</li>
+            <li>✅ Priority support</li>
+            <li>✅ Advanced features</li>
+        </ul>
+        <button onclick="showPage('homePage')" class="btn-primary">Start Creating</button>
+    </div>
+</div>
+
+<!-- Payment Cancelled Page -->
+<div id="paymentCancelledPage" class="page" style="display: none;">
+    <div class="cancel-container">
+        <h1>Payment Cancelled</h1>
+        <p>No charges were made. You can upgrade anytime!</p>
+        <button onclick="showPage('homePage')" class="btn-secondary">Back to Home</button>
+    </div>
+</div>
+
+<!-- 
+=====================================================
+4. ADD GENERATION LIMIT MODAL
+=====================================================
+-->
+
+<div id="limitReachedModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h2>🚫 Generation Limit Reached</h2>
+        <p>You've used all your free presentations.</p>
+        <div class="upgrade-offer">
+            <h3>Upgrade to Premium</h3>
+            <ul>
+                <li>✅ 10 presentations per month</li>
+                <li>✅ Automatic monthly reset</li>
+                <li>✅ Cancel anytime</li>
+            </ul>
+            <p class="price">Only $6.99/month</p>
+            <button onclick="handleUpgrade()" class="btn-premium">Upgrade Now</button>
+            <button onclick="closeModal('limitReachedModal')" class="btn-secondary">Maybe Later</button>
+        </div>
+    </div>
+</div>
+
+<!-- 
+=====================================================
+5. ADD CSS STYLES
+=====================================================
+-->
+
+<style>
+/* Subscription Banner */
+.subscription-banner {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    padding: 15px 30px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
+
+.subscription-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+#subscriptionTier {
+    font-weight: bold;
+    font-size: 18px;
+    color: #333;
+}
+
+#generationsCounter {
+    color: #555;
+    font-size: 16px;
+}
+
+.upgrade-btn {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.upgrade-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.cancel-btn {
+    background: #ff5252;
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.cancel-btn:hover {
+    background: #ff1744;
+}
+
+/* Payment Success/Cancel Pages */
+.success-container, .cancel-container {
+    text-align: center;
+    padding: 50px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    margin: 50px auto;
+}
+
+.success-container h1 {
+    color: #4CAF50;
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+.success-container ul, .upgrade-offer ul {
+    list-style: none;
+    padding: 0;
+    margin: 30px 0;
+}
+
+.success-container li, .upgrade-offer li {
+    font-size: 18px;
+    padding: 10px 0;
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.modal-content {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    max-width: 500px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h2 {
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.upgrade-offer {
+    margin-top: 30px;
+}
+
+.upgrade-offer h3 {
+    color: #FFD700;
+    font-size: 28px;
+    margin-bottom: 20px;
+}
+
+.price {
+    font-size: 32px;
+    font-weight: bold;
+    color: #4CAF50;
+    margin: 20px 0;
+}
+
+.btn-premium {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    color: #333;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 30px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 10px;
+    transition: transform 0.2s;
+}
+
+.btn-premium:hover {
+    transform: scale(1.05);
+}
+
+.btn-secondary {
+    background: #999;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 25px;
+    cursor: pointer;
+    margin: 10px;
+}
+
+.btn-secondary:hover {
+    background: #777;
+}
+</style>
+
+<!-- 
+=====================================================
+6. ADD JAVASCRIPT FUNCTIONS
+=====================================================
+-->
+
+<script>
+// Stripe instance
+let stripe;
+
+// Initialize Stripe on page load
+async function initializeStripe() {
+    try {
+        const res = await fetch('/api/payment/config');
+        const config = await res.json();
+        stripe = Stripe(config.publishableKey);
+    } catch (error) {
+        console.error('Failed to initialize Stripe:', error);
+    }
+}
+
+// Call on page load
+window.addEventListener('DOMContentLoaded', initializeStripe);
+
+// Update subscription status display
+async function updateSubscriptionDisplay() {
+    const statusRes = await fetch('/api/auth/status', { credentials: 'include' });
+    const data = await statusRes.json();
+    
+    if (data.authenticated) {
+        const subStatus = document.getElementById('subscriptionStatus');
+        const tierText = document.getElementById('subscriptionTier');
+        const counterText = document.getElementById('generationsCounter');
+        const upgradeBtn = document.getElementById('upgradeBtn');
+        const cancelBtn = document.getElementById('cancelSubBtn');
+        
+        subStatus.style.display = 'block';
+        
+        if (data.user.subscription_status === 'premium') {
+            tierText.textContent = '⭐ Premium Plan';
+            tierText.style.color = '#FFD700';
+            upgradeBtn.style.display = 'none';
+            cancelBtn.style.display = 'inline-block';
+        } else {
+            tierText.textContent = 'Free Plan';
+            upgradeBtn.style.display = 'inline-block';
+            cancelBtn.style.display = 'none';
+        }
+        
+        counterText.textContent = `${data.user.generations_used} / ${data.user.generations_limit} presentations used`;
+    }
+}
+
+// Handle upgrade button click
+async function handleUpgrade() {
+    if (!stripe) {
+        alert('Payment system is initializing. Please try again in a moment.');
+        return;
+    }
+    
+    try {
+        // Show loading
+        const upgradeBtn = document.getElementById('upgradeBtn');
+        const originalText = upgradeBtn.textContent;
+        upgradeBtn.textContent = 'Loading...';
+        upgradeBtn.disabled = true;
+        
+        // Create checkout session
+        const sessionRes = await fetch('/api/payment/create-checkout-session', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        const session = await sessionRes.json();
+        
+        if (session.error) {
+            alert(session.error);
+            upgradeBtn.textContent = originalText;
+            upgradeBtn.disabled = false;
+            return;
+        }
+        
+        // Redirect to Stripe Checkout
+        const result = await stripe.redirectToCheckout({
+            sessionId: session.sessionId
+        });
+        
+        if (result.error) {
+            alert(result.error.message);
+            upgradeBtn.textContent = originalText;
+            upgradeBtn.disabled = false;
+        }
+    } catch (error) {
+        console.error('Upgrade error:', error);
+        alert('Failed to start checkout. Please try again.');
+        upgradeBtn.textContent = originalText;
+        upgradeBtn.disabled = false;
+    }
+}
+
+// Handle subscription cancellation
+async function handleCancelSubscription() {
+    if (!confirm('Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.')) {
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/payment/cancel-subscription', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+            alert('Subscription cancelled successfully. You can resubscribe anytime!');
+            updateSubscriptionDisplay();
+        } else {
+            alert(data.error || 'Failed to cancel subscription');
+        }
+    } catch (error) {
+        console.error('Cancel error:', error);
+        alert('Failed to cancel subscription. Please try again.');
+    }
+}
+
+// Check for payment success/cancel on page load
+window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    if (urlParams.get('session_id')) {
+        // Payment successful
+        showPage('paymentSuccessPage');
+        updateSubscriptionDisplay();
+        // Remove query params
+        window.history.replaceState({}, '', window.location.pathname);
+    }
+});
+
+// Show limit reached modal
+function showLimitReachedModal() {
+    document.getElementById('limitReachedModal').style.display = 'flex';
+}
+
+// Close modal
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+// Modified generate function to check limits
+async function startResearch() {
+    const topic = document.getElementById('topicInput').value.trim();
+    
+    if (!topic) {
+        alert('Please enter a topic');
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/research', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                topic: topic,
+                num_slides: parseInt(document.getElementById('numSlides').value)
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (res.status === 403 && data.limit_reached) {
+            // Show upgrade modal
+            showLimitReachedModal();
+            return;
+        }
+        
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+        
+        // Continue with normal flow
+        // ... rest of your existing code
+        
+    } catch (error) {
+        console.error('Research error:', error);
+        alert('Failed to start research');
+    }
+}
+
+// Update status display on login
+function handleLoginSuccess() {
+    // ... your existing login code ...
+    updateSubscriptionDisplay();
+}
+</script>
+
+<!-- 
+=====================================================
+INTEGRATION NOTES
+=====================================================
+
+1. Add Stripe script to <head>
+2. Add subscription banner after user logs in
+3. Add payment success/cancel pages
+4. Add limit reached modal
+5. Add CSS styles
+6. Add JavaScript functions
+7. Call updateSubscriptionDisplay() after login
+8. Modify startResearch() to check limits
+
+The payment flow:
+1. User clicks "Upgrade"
+2. handleUpgrade() creates checkout session
+3. Redirects to Stripe Checkout
+4. User completes payment
+5. Stripe redirects back with session_id
+6. Backend webhook activates premium
+7. User sees success page
+8. Subscription status updates
+
+=====================================================
+-->

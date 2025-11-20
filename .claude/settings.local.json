@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(kill:*)",
+      "Bash(python3:*)",
+      "Bash(PORT=5000 python3:*)",
+      "Bash(lsof:*)",
+      "Bash(sqlite3:*)",
+      "Bash(xargs kill -9)",
+      "Bash(done)",
+      "Bash(curl:*)",
+      "Bash(PORT=3000 python3:*)",
+      "Bash(pkill:*)",
+      "Bash(pip freeze:*)",
+      "Bash(requirements.txt)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

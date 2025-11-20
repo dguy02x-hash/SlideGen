@@ -1,0 +1,657 @@
+<!-- 
+=====================================================
+PAYMENT REQUIRED - HTML UPDATES (NO FREE TIER)
+=====================================================
+
+Users MUST subscribe ($6.99/month) to generate presentations.
+No free presentations provided.
+
+Add these sections to your existing index.html file
+
+=====================================================
+1. ADD TO <head> SECTION
+=====================================================
+-->
+
+<!-- Stripe.js Library -->
+<script src="https://js.stripe.com/v3/"></script>
+
+<!-- 
+=====================================================
+2. SUBSCRIPTION STATUS DISPLAY (After login)
+=====================================================
+-->
+
+<div id="subscriptionStatus" style="display: none;" class="subscription-banner">
+    <div class="subscription-info">
+        <span id="subscriptionTier">No Active Subscription</span>
+        <span id="generationsCounter">Subscribe to start creating</span>
+        <button id="subscribeBtn" class="subscribe-btn" onclick="handleSubscribe()">
+            🚀 Subscribe Now - $6.99/month
+        </button>
+        <button id="cancelSubBtn" class="cancel-btn" onclick="handleCancelSubscription()" style="display: none;">
+            Manage Subscription
+        </button>
+    </div>
+</div>
+
+<!-- 
+=====================================================
+3. SUBSCRIPTION REQUIRED MODAL
+=====================================================
+-->
+
+<div id="subscriptionRequiredModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h2>🔒 Subscription Required</h2>
+        <p>To create presentations, you need an active subscription.</p>
+        <div class="subscription-offer">
+            <h3>Subscribe to SlideGen Pro</h3>
+            <ul>
+                <li>✅ 10 professional presentations per month</li>
+                <li>✅ AI-powered content generation</li>
+                <li>✅ Grammar-perfect speaker notes</li>
+                <li>✅ Multiple themes and formats</li>
+                <li>✅ Cancel anytime</li>
+            </ul>
+            <p class="price">$6.99<span class="period">/month</span></p>
+            <button onclick="handleSubscribe()" class="btn-subscribe">Subscribe Now</button>
+            <p class="terms">Cancel anytime. No hidden fees.</p>
+        </div>
+    </div>
+</div>
+
+<!-- 
+=====================================================
+4. PAYMENT SUCCESS PAGE
+=====================================================
+-->
+
+<div id="paymentSuccessPage" class="page" style="display: none;">
+    <div class="success-container">
+        <h1>🎉 Welcome to SlideGen Pro!</h1>
+        <p>Your subscription is now active.</p>
+        <div class="benefits-box">
+            <h3>You now have:</h3>
+            <ul>
+                <li>✅ 10 presentations per month</li>
+                <li>✅ AI-powered content generation</li>
+                <li>✅ Grammar-perfect speaker notes</li>
+                <li>✅ All themes unlocked</li>
+            </ul>
+        </div>
+        <button onclick="showPage('homePage')" class="btn-primary">Start Creating</button>
+    </div>
+</div>
+
+<!-- 
+=====================================================
+5. PAYMENT CANCELLED PAGE
+=====================================================
+-->
+
+<div id="paymentCancelledPage" class="page" style="display: none;">
+    <div class="cancel-container">
+        <h1>Payment Cancelled</h1>
+        <p>No charges were made. Subscribe anytime to start creating presentations!</p>
+        <button onclick="handleSubscribe()" class="btn-subscribe">Subscribe Now</button>
+        <button onclick="showPage('homePage')" class="btn-secondary">Back to Home</button>
+    </div>
+</div>
+
+<!-- 
+=====================================================
+6. MONTHLY LIMIT REACHED MODAL
+=====================================================
+-->
+
+<div id="monthlyLimitModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h2>📊 Monthly Limit Reached</h2>
+        <p>You've used all 10 presentations for this month.</p>
+        <div class="limit-info">
+            <p><strong>Your limit resets on the 1st of next month.</strong></p>
+            <p>You'll get 10 fresh presentations to create!</p>
+        </div>
+        <button onclick="closeModal('monthlyLimitModal')" class="btn-primary">Got It</button>
+    </div>
+</div>
+
+<!-- 
+=====================================================
+7. ADD CSS STYLES
+=====================================================
+-->
+
+<style>
+/* Subscription Banner */
+.subscription-banner {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    padding: 15px 30px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
+
+.subscription-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+#subscriptionTier {
+    font-weight: bold;
+    font-size: 18px;
+    color: #333;
+}
+
+#generationsCounter {
+    color: #555;
+    font-size: 16px;
+}
+
+.subscribe-btn {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 16px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.subscribe-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.cancel-btn {
+    background: #999;
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.cancel-btn:hover {
+    background: #777;
+}
+
+/* Subscription Status - Premium */
+.subscription-banner.premium {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+}
+
+.subscription-banner.inactive {
+    background: linear-gradient(135deg, #ff5252 0%, #ff1744 100%);
+}
+
+#subscriptionTier.premium {
+    color: #FFD700;
+}
+
+/* Payment Success/Cancel Pages */
+.success-container, .cancel-container {
+    text-align: center;
+    padding: 50px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    margin: 50px auto;
+}
+
+.success-container h1 {
+    color: #4CAF50;
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+.benefits-box {
+    background: #f5f5f5;
+    padding: 30px;
+    border-radius: 15px;
+    margin: 30px 0;
+}
+
+.benefits-box h3 {
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.benefits-box ul {
+    list-style: none;
+    padding: 0;
+}
+
+.benefits-box li {
+    font-size: 18px;
+    padding: 10px 0;
+    text-align: left;
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.modal-content {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    max-width: 500px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h2 {
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.subscription-offer {
+    margin-top: 30px;
+}
+
+.subscription-offer h3 {
+    color: #FFD700;
+    font-size: 28px;
+    margin-bottom: 20px;
+}
+
+.subscription-offer ul {
+    list-style: none;
+    padding: 0;
+    margin: 30px 0;
+    text-align: left;
+}
+
+.subscription-offer li {
+    font-size: 16px;
+    padding: 8px 0;
+}
+
+.price {
+    font-size: 48px;
+    font-weight: bold;
+    color: #4CAF50;
+    margin: 20px 0;
+}
+
+.price .period {
+    font-size: 24px;
+    color: #777;
+}
+
+.btn-subscribe {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    color: #333;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 30px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 10px;
+    transition: transform 0.2s;
+}
+
+.btn-subscribe:hover {
+    transform: scale(1.05);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 30px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 10px;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+}
+
+.btn-secondary {
+    background: #999;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 25px;
+    cursor: pointer;
+    margin: 10px;
+}
+
+.btn-secondary:hover {
+    background: #777;
+}
+
+.terms {
+    color: #999;
+    font-size: 12px;
+    margin-top: 15px;
+}
+
+.limit-info {
+    background: #f5f5f5;
+    padding: 20px;
+    border-radius: 10px;
+    margin: 20px 0;
+}
+
+.limit-info p {
+    margin: 10px 0;
+}
+
+/* Disabled Create Button */
+.create-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+</style>
+
+<!-- 
+=====================================================
+8. ADD JAVASCRIPT FUNCTIONS
+=====================================================
+-->
+
+<script>
+// Stripe instance
+let stripe;
+
+// Initialize Stripe on page load
+async function initializeStripe() {
+    try {
+        const res = await fetch('/api/payment/config');
+        const config = await res.json();
+        stripe = Stripe(config.publishableKey);
+    } catch (error) {
+        console.error('Failed to initialize Stripe:', error);
+    }
+}
+
+// Call on page load
+window.addEventListener('DOMContentLoaded', initializeStripe);
+
+// Update subscription status display
+async function updateSubscriptionDisplay() {
+    const statusRes = await fetch('/api/auth/status', { credentials: 'include' });
+    const data = await statusRes.json();
+    
+    if (data.authenticated) {
+        const subStatus = document.getElementById('subscriptionStatus');
+        const tierText = document.getElementById('subscriptionTier');
+        const counterText = document.getElementById('generationsCounter');
+        const subscribeBtn = document.getElementById('subscribeBtn');
+        const cancelBtn = document.getElementById('cancelSubBtn');
+        
+        subStatus.style.display = 'block';
+        
+        if (data.user.subscription_status === 'premium') {
+            // Premium user
+            subStatus.classList.remove('inactive');
+            subStatus.classList.add('premium');
+            tierText.textContent = '⭐ Premium Subscriber';
+            tierText.style.color = '#FFD700';
+            counterText.textContent = `${data.user.generations_used} / ${data.user.generations_limit} presentations used this month`;
+            subscribeBtn.style.display = 'none';
+            cancelBtn.style.display = 'inline-block';
+        } else {
+            // Inactive user - needs to subscribe
+            subStatus.classList.remove('premium');
+            subStatus.classList.add('inactive');
+            tierText.textContent = '🔒 No Active Subscription';
+            tierText.style.color = '#fff';
+            counterText.textContent = 'Subscribe to start creating presentations';
+            subscribeBtn.style.display = 'inline-block';
+            cancelBtn.style.display = 'none';
+        }
+    }
+}
+
+// Handle subscribe button click
+async function handleSubscribe() {
+    if (!stripe) {
+        alert('Payment system is initializing. Please try again in a moment.');
+        return;
+    }
+    
+    try {
+        // Show loading
+        const subscribeBtn = document.getElementById('subscribeBtn') || event.target;
+        const originalText = subscribeBtn.textContent;
+        subscribeBtn.textContent = 'Loading...';
+        subscribeBtn.disabled = true;
+        
+        // Create checkout session
+        const sessionRes = await fetch('/api/payment/create-checkout-session', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        const session = await sessionRes.json();
+        
+        if (session.error) {
+            alert(session.error);
+            subscribeBtn.textContent = originalText;
+            subscribeBtn.disabled = false;
+            return;
+        }
+        
+        // Redirect to Stripe Checkout
+        const result = await stripe.redirectToCheckout({
+            sessionId: session.sessionId
+        });
+        
+        if (result.error) {
+            alert(result.error.message);
+            subscribeBtn.textContent = originalText;
+            subscribeBtn.disabled = false;
+        }
+    } catch (error) {
+        console.error('Subscribe error:', error);
+        alert('Failed to start checkout. Please try again.');
+        if (event.target) {
+            event.target.textContent = '🚀 Subscribe Now - $6.99/month';
+            event.target.disabled = false;
+        }
+    }
+}
+
+// Handle subscription cancellation
+async function handleCancelSubscription() {
+    if (!confirm('Are you sure you want to cancel your subscription? You will lose access to SlideGen Pro at the end of your billing period.')) {
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/payment/cancel-subscription', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+            alert('Subscription cancelled. You can resubscribe anytime!');
+            updateSubscriptionDisplay();
+        } else {
+            alert(data.error || 'Failed to cancel subscription');
+        }
+    } catch (error) {
+        console.error('Cancel error:', error);
+        alert('Failed to cancel subscription. Please try again.');
+    }
+}
+
+// Show subscription required modal
+function showSubscriptionRequired() {
+    document.getElementById('subscriptionRequiredModal').style.display = 'flex';
+}
+
+// Show monthly limit modal
+function showMonthlyLimit() {
+    document.getElementById('monthlyLimitModal').style.display = 'flex';
+}
+
+// Close modal
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+// Check for payment success/cancel on page load
+window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    if (urlParams.get('session_id')) {
+        // Payment successful
+        showPage('paymentSuccessPage');
+        updateSubscriptionDisplay();
+        // Remove query params
+        window.history.replaceState({}, '', window.location.pathname);
+    }
+});
+
+// Modified generate function to check subscription
+async function startResearch() {
+    const topic = document.getElementById('topicInput').value.trim();
+    
+    if (!topic) {
+        alert('Please enter a topic');
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/research', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                topic: topic,
+                num_slides: parseInt(document.getElementById('numSlides').value)
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (res.status === 403) {
+            if (data.subscription_required) {
+                // No subscription - show modal
+                showSubscriptionRequired();
+                return;
+            } else if (data.limit_reached) {
+                // Monthly limit reached
+                showMonthlyLimit();
+                return;
+            }
+        }
+        
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+        
+        // Continue with normal flow
+        // ... rest of your existing code
+        
+    } catch (error) {
+        console.error('Research error:', error);
+        alert('Failed to start research');
+    }
+}
+
+// Update status display on login
+async function handleLoginSuccess() {
+    // ... your existing login code ...
+    await updateSubscriptionDisplay();
+    
+    // Check subscription status and redirect if needed
+    const statusRes = await fetch('/api/auth/status', { credentials: 'include' });
+    const data = await statusRes.json();
+    
+    if (data.authenticated && data.user.subscription_status !== 'premium') {
+        // Show subscription modal after login if not subscribed
+        setTimeout(() => {
+            showSubscriptionRequired();
+        }, 1000);
+    }
+}
+
+// Update Create Presentation button state
+function updateCreateButton() {
+    const createBtn = document.getElementById('createBtn');
+    if (createBtn) {
+        fetch('/api/auth/status', { credentials: 'include' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.authenticated && data.user.subscription_status === 'premium') {
+                    createBtn.disabled = false;
+                    createBtn.textContent = 'Create Presentation';
+                } else {
+                    createBtn.disabled = true;
+                    createBtn.textContent = 'Subscribe to Create';
+                    createBtn.onclick = showSubscriptionRequired;
+                }
+            });
+    }
+}
+
+// Call on page load
+window.addEventListener('DOMContentLoaded', updateCreateButton);
+</script>
+
+<!-- 
+=====================================================
+INTEGRATION NOTES - NO FREE TIER
+=====================================================
+
+Key Changes from Free Version:
+1. Users CANNOT create presentations without subscription
+2. Signup does NOT give free presentations
+3. All generation endpoints require active subscription
+4. After signup, prompt user to subscribe immediately
+5. Subscription required modal shows when trying to create without paying
+
+The payment flow:
+1. User signs up (creates account)
+2. Prompted to subscribe immediately
+3. Redirects to Stripe Checkout
+4. User completes payment ($6.99/month)
+5. Stripe redirects back with session_id
+6. Backend webhook activates premium
+7. User can now create 10 presentations per month
+8. Limit resets on 1st of each month
+
+Database Changes:
+- subscription_status starts as 'inactive' (not 'free')
+- generations_limit starts at 0 (not 1)
+- No free generations given
+
+Messages to show:
+- Signup: "Account created! Subscribe now to start creating."
+- No subscription: "🔒 Subscription Required"
+- After payment: "🎉 Welcome to SlideGen Pro!"
+
+=====================================================
+-->
