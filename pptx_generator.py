@@ -937,16 +937,16 @@ class ThemeGenerator:
             p.font.color.rgb = RGBColor(0, 0, 0)
             p.alignment = PP_ALIGN.LEFT
 
-            # First content box (top right)
+            # Single content box (right side) - showing all bullets
             box1 = slide.shapes.add_shape(
                 MSO_SHAPE.ROUNDED_RECTANGLE,
-                Inches(5.3), Inches(0.8), Inches(4.2), Inches(3)
+                Inches(5.3), Inches(0.8), Inches(4.2), Inches(5.9)
             )
             box1.fill.solid()
             box1.fill.fore_color.rgb = self.theme["content_background"]
             box1.line.fill.background()
 
-            # Topic label in box 1
+            # Topic label in box
             topic1 = slide.shapes.add_textbox(
                 Inches(5.6), Inches(1.1), Inches(3.6), Inches(0.6)
             )
@@ -958,60 +958,24 @@ class ThemeGenerator:
             p.font.bold = False
             p.font.color.rgb = RGBColor(0, 0, 0)
 
-            # Bullet points in box 1
+            # All bullet points in single box
             bullets_box1 = slide.shapes.add_textbox(
-                Inches(5.6), Inches(1.8), Inches(3.6), Inches(1.8)  # Increased height
+                Inches(5.6), Inches(1.8), Inches(3.6), Inches(4.6)
             )
             tf = bullets_box1.text_frame
             tf.word_wrap = True
             tf.vertical_anchor = MSO_ANCHOR.TOP
-            for i, bullet in enumerate(bullets[:3]):
+            for i, bullet in enumerate(bullets):
                 if i > 0:
                     p = tf.add_paragraph()
                 else:
                     p = tf.paragraphs[0]
                 p.text = bullet
                 p.font.name = self.theme["font"]
-                p.font.size = Pt(14)  # Reduced from 16pt
+                p.font.size = Pt(14)
                 p.font.color.rgb = RGBColor(0, 0, 0)
-
-            # Second content box (bottom right)
-            box2 = slide.shapes.add_shape(
-                MSO_SHAPE.ROUNDED_RECTANGLE,
-                Inches(5.3), Inches(4.1), Inches(4.2), Inches(3)
-            )
-            box2.fill.solid()
-            box2.fill.fore_color.rgb = self.theme["content_background"]
-            box2.line.fill.background()
-
-            # Topic label in box 2
-            topic2 = slide.shapes.add_textbox(
-                Inches(5.6), Inches(4.4), Inches(3.6), Inches(0.6)
-            )
-            tf = topic2.text_frame
-            p = tf.paragraphs[0]
-            p.text = "Topic"
-            p.font.name = self.theme["font"]
-            p.font.size = Pt(36)
-            p.font.color.rgb = RGBColor(0, 0, 0)
-
-            # Bullet points in box 2
-            bullets_box2 = slide.shapes.add_textbox(
-                Inches(5.6), Inches(5.1), Inches(3.6), Inches(1.8)  # Increased height
-            )
-            tf = bullets_box2.text_frame
-            tf.word_wrap = True
-            tf.vertical_anchor = MSO_ANCHOR.TOP
-            remaining_bullets = bullets[3:6] if len(bullets) > 3 else bullets[:3]
-            for i, bullet in enumerate(remaining_bullets):
-                if i > 0:
-                    p = tf.add_paragraph()
-                else:
-                    p = tf.paragraphs[0]
-                p.text = bullet
-                p.font.name = self.theme["font"]
-                p.font.size = Pt(14)  # Reduced from 16pt
-                p.font.color.rgb = RGBColor(0, 0, 0)
+                p.level = 0  # Enable bullet formatting
+                p.bullet = True  # Add bullet character
 
     def _add_minimalist_gray_content(self, slide, title, bullets):
         """Minimalist Gray theme: Split layout with text left, image right"""
@@ -1491,7 +1455,7 @@ class ThemeGenerator:
 
 
 def generate_presentation(title, topic, sections, theme_name="Business Black and Yellow",
-                         notes_style="Detailed", custom_style=None, filename=None):
+                         notes_style="Detailed", slide_format="Detailed", custom_style=None, filename=None):
     """
     Generate a complete presentation with AI-written speaker notes
 
@@ -1501,6 +1465,7 @@ def generate_presentation(title, topic, sections, theme_name="Business Black and
         sections: List of dicts with 'title' and 'facts' keys
         theme_name: Name of predefined theme (used if custom_style is None)
         notes_style: Style of speaker notes (Concise, Detailed, Full Explanation)
+        slide_format: Format of slide bullets (Concise = max 5 words, Detailed = full sentences)
         custom_style: Dict with AI-generated custom style (overrides theme_name)
         filename: Output filename
 
@@ -1511,10 +1476,10 @@ def generate_presentation(title, topic, sections, theme_name="Business Black and
 
     # Create generator with custom style or predefined theme
     gen = ThemeGenerator(theme_name=theme_name, custom_style=custom_style)
-    
+
     # Add title slide
     gen.add_title_slide(title, "[Your Name]")
-    
+
     # Add content slides
     for i, section in enumerate(sections):
         # Use pre-generated AI speaker notes if available, otherwise generate locally
@@ -1527,24 +1492,28 @@ def generate_presentation(title, topic, sections, theme_name="Business Black and
                 section.get('facts', []),
                 section.get('notes_context', ''),
                 notes_style,
-                i + 1
+                i + 1,
+                section.get('custom_notes')
             )
+
+        # Get facts - conversion should already be done in server.py before calling this
+        facts = section.get('facts', ['Content for this section'])
 
         # Add content slide
         gen.add_content_slide(
             section.get('title', f'Section {i+1}'),
-            section.get('facts', ['Content for this section']),
+            facts,
             notes=notes
         )
-    
+
     # Add thank you slide
     gen.add_thank_you_slide()
-    
+
     gen.save(filename)
     return filename
 
 
-def generate_human_speaker_notes(title, facts, context, style, slide_num):
+def generate_human_speaker_notes(title, facts, context, style, slide_num, custom_notes=None):
     """Generate natural, human-sounding speaker notes that read like actual presentation speech"""
 
     facts_list = facts[:5] if len(facts) >= 5 else facts
@@ -1598,29 +1567,19 @@ def generate_human_speaker_notes(title, facts, context, style, slide_num):
         return notes
 
     else:  # Detailed (default)
-        # Balanced, natural explanation (7-10 sentences)
-        notes = f"{title} addresses several crucial considerations.\n\n"
+        # Use custom notes if provided, otherwise format the facts
+        if custom_notes:
+            return custom_notes
+
+        # Fallback: Format facts as a paragraph
+        notes = f"{title}\n\n"
 
         if context:
             notes += f"{context}\n\n"
 
         if facts_list:
-            notes += f"{facts_list[0]}. This represents the primary factor we need to understand. "
-
-            if len(facts_list) > 1:
-                notes += f"Equally significant, {facts_list[1]}. This complements our first point effectively. "
-
-            if len(facts_list) > 2:
-                notes += f"Additionally, {facts_list[2]}. This element brings another dimension to our analysis. "
-
-            if len(facts_list) > 3:
-                notes += f"We should also consider {facts_list[3]}. "
-
-            if len(facts_list) > 4:
-                notes += f"Finally, {facts_list[4]}. "
-
-        notes += f"\n\nUnderstanding {title} provides valuable insights that inform decision-making processes. "
-        notes += "These interconnected concepts create a framework for practical application in real-world scenarios."
+            # Join facts into a natural paragraph
+            notes += ' '.join(facts_list)
 
         return notes
 

@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>SlideGen Pro - AI Presentation Generator</title>
     <style>
         * {
@@ -677,16 +680,7 @@
                     </select>
                     <small>Concise: Brief phrases without punctuation. Detailed: Complete sentences with context.</small>
                 </div>
-                
-                <div class="input-group">
-                    <label>Speaker Notes Style</label>
-                    <select id="notes-style" required>
-                        <option value="Detailed">Detailed - Balanced talking points</option>
-                        <option value="Concise">Concise - Brief 2-3 sentence notes</option>
-                    </select>
-                    <small>Choose how much detail you want in your presenter notes</small>
-                </div>
-                
+
                 <button type="submit" class="btn btn-primary">Generate Presentation</button>
                 <button type="button" class="btn btn-secondary" onclick="showPage('title-page')">Back</button>
             </form>
@@ -1104,7 +1098,7 @@
 
             presentationData.numSlides = parseInt(document.getElementById('num-slides').value);
             presentationData.slideFormat = document.getElementById('slide-format').value;
-            presentationData.notesStyle = document.getElementById('notes-style').value;
+            presentationData.notesStyle = 'Detailed'; // Always use detailed speaker notes
 
             // Get selected theme from hidden input
             presentationData.theme = document.getElementById('selected-theme').value;
@@ -1157,46 +1151,6 @@
 
                     document.getElementById('complete-title').textContent = presentationData.title;
                     showPage('complete-page');
-
-                    // AUTOMATICALLY DOWNLOAD AFTER showing complete page - Don't let download errors affect generation
-                    console.log('Auto-downloading presentation immediately...');
-                    setTimeout(async () => {
-                        try {
-                            const downloadResponse = await fetch(`${API_URL}/api/presentations/generate-pptx`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                credentials: 'include',
-                                body: JSON.stringify({
-                                    title: presentationData.title,
-                                    topic: presentationData.topic,
-                                    sections: presentationData.sections,
-                                    theme: presentationData.theme,
-                                    notesStyle: presentationData.notesStyle,
-                                    customStyle: presentationData.customStyle
-                                })
-                            });
-
-                            if (downloadResponse.ok) {
-                                const blob = await downloadResponse.blob();
-                                const url = window.URL.createObjectURL(blob);
-                                const link = document.createElement('a');
-                                link.href = url;
-                                link.download = `${presentationData.title}.pptx`;
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                                window.URL.revokeObjectURL(url);
-                                console.log('✓ Download completed successfully');
-                                showSuccessModal('PowerPoint presentation downloaded successfully!');
-                            } else {
-                                console.error('Download failed:', downloadResponse.status);
-                                showErrorModal('Download failed. Please use the "View & Download Presentation" button to try again.');
-                            }
-                        } catch (downloadError) {
-                            console.error('Download error:', downloadError);
-                            showErrorModal('Download failed. Please use the "View & Download Presentation" button to try again.');
-                        }
-                    }, 500); // Small delay to let page transition complete
                 } else {
                     showErrorModal(data.error);
                     showPage('format-page');
@@ -1208,7 +1162,9 @@
         });
 
         function downloadPresentation() {
-            console.log('=== DOWNLOAD BUTTON CLICKED ===');
+            const timestamp = new Date().toISOString();
+            console.log('=== DOWNLOAD BUTTON CLICKED AT ' + timestamp + ' ===');
+            console.log('API_URL is:', API_URL);
 
             // Try to restore from sessionStorage if data is missing
             if (!presentationData || !presentationData.sections || presentationData.sections.length === 0) {
@@ -1253,8 +1209,12 @@
 
             // Show loading modal
             showPage('generating-page');
-            document.querySelector('#generating-page h2').textContent = 'Generating PowerPoint...';
-            document.querySelector('#generating-page p').innerHTML = 'Creating your presentation...<br>This should take just a few seconds...';
+
+            // Update expected time message
+            const timeEstimateElement = document.querySelector('#generating-page .loading p:last-child');
+            if (timeEstimateElement) {
+                timeEstimateElement.textContent = 'Expected time: 2-3 minutes with detailed AI speaker notes';
+            }
 
             // Generate and download the actual PowerPoint file
             const dataToSend = {
@@ -1263,6 +1223,7 @@
                 sections: presentationData.sections || [],
                 theme: presentationData.theme || 'Business Black and Yellow',
                 notesStyle: presentationData.notesStyle || 'Detailed',
+                slideFormat: presentationData.slideFormat || 'Detailed',
                 customStyle: presentationData.customStyle  // Include custom style if generated
             };
 
@@ -1270,14 +1231,24 @@
             console.log('Data being sent:', JSON.stringify(dataToSend, null, 2));
             console.log('Request body size:', JSON.stringify(dataToSend).length, 'bytes');
 
-            console.log('Starting fetch request...');
+            // Create an AbortController for timeout
+            const controller = new AbortController();
+            const timeout = 300000; // 5 minutes for detailed speaker notes
+            const timeoutId = setTimeout(() => {
+                console.error('Request timeout - aborting fetch');
+                controller.abort();
+            }, timeout);
+
+            console.log('Starting fetch request with 5 minute timeout...');
             fetch(`${API_URL}/api/presentations/generate-pptx`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify(dataToSend)
+                body: JSON.stringify(dataToSend),
+                signal: controller.signal
             })
             .then(response => {
+                clearTimeout(timeoutId); // Clear timeout on successful response
                 console.log('=== RESPONSE RECEIVED ===');
                 console.log('Status:', response.status);
                 console.log('Status Text:', response.statusText);
@@ -1321,12 +1292,19 @@
                 showSuccessModal('PowerPoint presentation downloaded successfully!');
             })
             .catch(error => {
+                clearTimeout(timeoutId); // Clear timeout on error
                 console.error('=== DOWNLOAD ERROR ===');
                 console.error('Error type:', error.name);
                 console.error('Error message:', error.message);
                 console.error('Error stack:', error.stack);
+
+                let errorMessage = 'Failed to download presentation: ' + error.message;
+                if (error.name === 'AbortError') {
+                    errorMessage = 'Request timed out after ' + (timeout/1000) + ' seconds. Please try again or use "Concise" notes for faster generation.';
+                }
+
                 showPage('complete-page');
-                showErrorModal('Failed to download presentation: ' + error.message);
+                showErrorModal(errorMessage);
             });
         }
 

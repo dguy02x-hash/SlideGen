@@ -879,10 +879,36 @@ def generate_content():
         if not section or not slide_title:
             return jsonify({'error': 'Missing required fields'}), 400
 
-        # SIMPLE APPROACH: Just use the facts directly from the outline
-        # This prevents repetition and ensures each slide has unique content
         facts = section.get('facts', [])
-        bullets = facts[:5]  # Use up to 5 facts directly as bullets
+
+        # If Concise format, convert facts to very short bullets (max 5 words)
+        if slide_format == "Concise":
+            prompt = f"""Convert these key points into VERY SHORT bullet points for a presentation slide titled "{slide_title}".
+
+KEY POINTS:
+{chr(10).join([f"- {fact}" for fact in facts[:5]])}
+
+REQUIREMENTS:
+- Each bullet must be NO MORE THAN 5 WORDS
+- Maximum 5 words per bullet
+- Use short phrases or key details only
+- Remove all unnecessary words
+- Keep only the essential information
+- Make them punchy and memorable
+
+Examples:
+- "Global market growth increased by 47%" → "47% market growth"
+- "Companies are adopting AI technologies rapidly" → "Rapid AI adoption"
+- "Customer satisfaction scores improved significantly" → "Higher satisfaction scores"
+
+Return ONLY the short bullets, one per line, no formatting:"""
+
+            response = call_anthropic(prompt, max_tokens=300)
+            bullets = [line.strip().lstrip('•-*').strip() for line in response.strip().split('\n') if line.strip()]
+            bullets = bullets[:5]  # Limit to 5 bullets
+        else:
+            # Detailed format: use facts directly as full sentences
+            bullets = facts[:5]
 
         return jsonify({'bullets': bullets})
 
@@ -914,32 +940,6 @@ def generate_notes():
         facts_text = '\n'.join(section.get('facts', []))
         slide_bullets = '\n'.join([f"• {item}" for item in slide_content]) if slide_content else ""
         
-        if style == "Concise":
-            style_instruction = "Create brief talking points (2-3 sentences total)."
-        else:  # Detailed style
-            style_instruction = "For EACH bullet point on the slide, write 1-2 additional sentences that expand on it with relevant details, context, or examples."
-        
-        if slide_format == "Concise":
-            format_instruction = f"The slide shows KEY WORDS: {slide_bullets}\nEXPLAIN each keyword with full context."
-        else:
-            format_instruction = f"The slide shows: {slide_bullets}\nELABORATE with additional details."
-
-        # Create completely unique structure for each slide
-        structures = [
-            "Start with a personal anecdote or story, then connect it to the data. Use conversational language like you're telling a friend.",
-            "Begin with a surprising statistic, then explain why it matters. Sound like a documentary narrator revealing insights.",
-            "Open with a rhetorical question to the audience, then answer it with examples. Be engaging and interactive.",
-            "Start with 'Imagine...' and paint a vivid scenario, then tie it back to facts. Be descriptive and relatable.",
-            "Begin by comparing this to something familiar (like 'Think of it like...'), then dive into specifics. Use analogies.",
-            "Open with 'Here's what most people don't know...' and share insider insights. Be revealing and informative.",
-            "Start with 'Let me tell you about...' and share a brief case study. Be specific with names and details.",
-            "Begin with 'The key to understanding this is...' and break it down simply. Be educational and clear.",
-            "Open with 'In my experience...' or 'Research shows...' and share evidence. Be authoritative yet approachable.",
-            "Start with 'Picture this scenario:' and describe a real-world application. Be practical and action-oriented."
-        ]
-
-        structure = structures[slide_num % len(structures)]
-
         # Check if there's source document content to enhance speaker notes
         source_document = session.get('source_document', '')
         document_context = ""
@@ -948,62 +948,42 @@ def generate_notes():
             # Extract relevant excerpts from source document for this slide
             doc_excerpt = source_document[:3000]  # Use first 3000 chars as context
             document_context = f"""
-SOURCE DOCUMENT CONTEXT (use this for additional details NOT shown on slide):
+SOURCE DOCUMENT CONTEXT (use this for additional details):
 {doc_excerpt}
 
-IMPORTANT: Pull supplementary information, examples, data, or context from the source document above that relates to "{slide_title}" but is NOT already on the slide. Use this to enrich your speaker notes with information the audience won't see on screen.
+Pull supplementary information, examples, data, or context from the source document above that relates to "{slide_title}".
 """
 
-        # Generate varied transition words for this slide
-        transition_sets = [
-            ["What's fascinating here is", "Here's what makes this significant", "Now, here's the key insight"],
-            ["Let me break this down", "Here's what really matters", "The interesting part is"],
-            ["Think about it this way", "Here's the reality", "What we're seeing here is"],
-            ["Now consider this", "The crucial point is", "What's remarkable about this"],
-            ["Here's where it gets interesting", "Let me explain why this matters", "The real story here is"],
-            ["So what does this mean?", "Here's the practical application", "Let's dig deeper into this"],
-            ["You might be wondering", "The data shows us", "What's emerging here is"],
-            ["This is particularly revealing", "Here's the context you need", "Let me give you perspective"],
-            ["Picture this scenario", "Here's what research tells us", "The compelling part is"],
-            ["Let's explore why", "What we discovered is", "Here's the breakthrough insight"]
-        ]
-
-        transitions = transition_sets[slide_num % len(transition_sets)]
-
         if style == "Concise":
-            prompt = f"""Write brief speaker notes (2-3 sentences total) for slide {slide_num} titled "{slide_title}".
+            # Get the full facts from the section for the speaker notes
+            prompt = f"""Write concise speaker notes for a presentation slide titled "{slide_title}".
 
-THE SLIDE SHOWS:
-{slide_bullets}
+TOPIC: {slide_title}
 
-Write 2-3 concise sentences that summarize the key takeaways from this slide in a conversational tone.
+KEY POINTS TO COVER:
+{chr(10).join([f"- {fact}" for fact in section.get('facts', [])[:5]])}
 
-Speaker notes:"""
-        else:  # Detailed style
-            prompt = f"""Write speaker notes for slide {slide_num} titled "{slide_title}".
+Write natural, conversational speaker notes (3-4 sentences) that provide context and explanation for these key points. Similar to detailed notes but more concise.
 
-THE SLIDE SHOWS (each bullet point is ONE sentence):
-{slide_bullets}
-
-YOUR TASK: For EACH bullet point above, write 1-2 additional sentences that expand on it with relevant details, context, or examples.
-
-FORMAT:
-• [Bullet point from slide]
-  [1-2 sentences expanding on this point with specific details, context, examples, or explanations]
-
-• [Next bullet point from slide]
-  [1-2 sentences expanding on this point]
-
-RULES:
-- Keep the original bullet text, then add 1-2 sentences after it
-- Make your additions specific and informative (add data, examples, context, or explanations)
-- Be conversational and natural
-- Don't repeat - each addition should provide NEW information
-- {style_instruction}
+IMPORTANT RULES:
+- Naturally incorporate 1-2 of these transition words (choose different ones each time): {', '.join(selected_transitions)}
+- Provide context, examples, or explanations that supplement the slide content
+- Be conversational and engaging
+- Use complete, flowing sentences
+- NEVER use generic phrases like "these elements work together" or "comprehensive understanding"
+- Make it sound like natural speech, not a list
 
 {document_context}
 
-Write your speaker notes now (plain text):"""
+Speaker notes:"""
+        else:  # Detailed style
+            prompt = f"""Write detailed speaker notes for a presentation slide titled "{slide_title}".
+
+Write a natural, conversational paragraph (5-7 sentences) that provides context, insights, and examples for this slide.
+
+{document_context}
+
+Speaker notes:"""
 
         # Detailed style needs more tokens to expand each bullet
         max_tokens = 1500 if style == "Concise" else 2500
@@ -1065,16 +1045,74 @@ def generate_pptx():
         from pptx_generator import generate_presentation
         from flask import send_file
         import tempfile
-        
+
         data = request.json
         title = data.get('title', 'Presentation')
         topic = data.get('topic', '')
         sections = data.get('sections', [])
         theme = data.get('theme', 'Business Black and Yellow')
         notes_style = data.get('notesStyle', 'Detailed')
-        
-        logger.info(f"Generating PPTX: {title[:30]} with notes style: {notes_style}")
-        
+        slide_format = data.get('slideFormat', 'Detailed')  # Add slide format
+
+        logger.info(f"Generating PPTX: {title[:30]} with format: {slide_format}, notes: {notes_style}")
+
+        # If Concise format, convert facts to short phrases (max 5 words) BEFORE generating PPTX
+        if slide_format == "Concise":
+            # Collect all bullets to convert in one batch
+            all_bullets = []
+            for section in sections:
+                if 'facts' in section and section['facts']:
+                    all_bullets.extend(section['facts'][:5])
+
+            # Convert all bullets in a single AI call for speed
+            if all_bullets:
+                bullets_text = '\n'.join([f"{i+1}. {bullet}" for i, bullet in enumerate(all_bullets)])
+                prompt = f"""Convert each of these bullet points into a SHORT phrase of NO MORE THAN 5 WORDS.
+Return ONLY the shortened phrases, one per line, in the same order:
+
+{bullets_text}"""
+                try:
+                    response = call_anthropic(prompt, max_tokens=500)
+                    short_bullets = [line.strip().strip('•-*').strip('1234567890.').strip()
+                                   for line in response.split('\n') if line.strip()]
+
+                    # Distribute the shortened bullets back to sections
+                    bullet_index = 0
+                    for section in sections:
+                        if 'facts' in section and section['facts']:
+                            num_facts = min(len(section['facts']), 5)
+                            section['facts'] = short_bullets[bullet_index:bullet_index + num_facts]
+                            bullet_index += num_facts
+                except Exception as e:
+                    logger.warning(f"Batch conversion failed, using fallback: {e}")
+                    # Fallback: Just take first 5 words of each
+                    for section in sections:
+                        if 'facts' in section and section['facts']:
+                            section['facts'] = [' '.join(fact.split()[:5]) for fact in section['facts'][:5]]
+
+        # If Detailed notes, generate AI summaries for speaker notes
+        if notes_style == "Detailed":
+            for section in sections:
+                if 'facts' in section and section['facts']:
+                    # Create a prompt to generate a natural summary
+                    facts_text = '\n'.join([f"- {fact}" for fact in section['facts'][:5]])
+                    prompt = f"""Create detailed speaker notes for a presentation slide about "{section.get('title', 'this topic')}".
+
+Key points to cover:
+{facts_text}
+
+Write a natural, conversational paragraph (5-7 sentences) that provides context, insights, and examples for these points.
+
+Speaker notes:"""
+
+                    try:
+                        summary = call_anthropic(prompt, max_tokens=500).strip()
+                        section['custom_notes'] = summary
+                    except Exception as e:
+                        logger.warning(f"Failed to generate speaker notes: {e}")
+                        # Fallback: Just join the facts
+                        section['custom_notes'] = ' '.join(section['facts'])
+
         # Generate presentation in temp file
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pptx') as tmp:
             filename = generate_presentation(
@@ -1083,9 +1121,10 @@ def generate_pptx():
                 sections=sections,
                 theme_name=theme,
                 notes_style=notes_style,
+                slide_format=slide_format,  # Pass slide format
                 filename=tmp.name
             )
-            
+
             # Send file
             return send_file(
                 filename,
@@ -1093,7 +1132,7 @@ def generate_pptx():
                 as_attachment=True,
                 download_name=f"{title.replace(' ', '_')}.pptx"
             )
-    
+
     except Exception as e:
         logger.error(f"PPTX generation error: {str(e)}")
         return jsonify({'error': str(e)}), 500
@@ -1101,9 +1140,24 @@ def generate_pptx():
 # ============= Static File Serving =============
 
 @app.route('/')
-def serve_index():
-    """Serve the main HTML file"""
-    return send_from_directory('.', 'index.html')
+def serve_landing():
+    """Serve the landing page"""
+    return send_from_directory('.', 'landing.html')
+
+@app.route('/app.html')
+def serve_app():
+    """Serve the main app"""
+    return send_from_directory('.', 'app.html')
+
+@app.route('/payment-success')
+def payment_success():
+    """Serve payment success page"""
+    return send_from_directory('.', 'payment-success.html')
+
+@app.route('/payment-cancelled')
+def payment_cancelled():
+    """Serve payment cancelled page"""
+    return send_from_directory('.', 'payment-cancelled.html')
 
 @app.route('/theme-previews/<path:filename>')
 def serve_theme_preview(filename):
