@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscribe to SlideGen Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            color: #1f2937;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: #1f2937;
+        }
+
+        .header p {
+            font-size: 1.25rem;
+            opacity: 0.9;
+        }
+
+        .pricing-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 2rem;
+            padding: 3rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .price-header {
+            text-align: center;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid rgba(251, 191, 36, 0.3);
+            margin-bottom: 2rem;
+        }
+
+        .price {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #1f2937;
+        }
+
+        .price-period {
+            font-size: 1.25rem;
+            color: #6b7280;
+        }
+
+        .plan-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .features {
+            margin: 2rem 0;
+        }
+
+        .features h3 {
+            font-size: 1.25rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .features ul {
+            list-style: none;
+        }
+
+        .features li {
+            padding: 1rem 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            font-size: 1.125rem;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .features li:last-child {
+            border-bottom: none;
+        }
+
+        .features li::before {
+            content: "✓";
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #059669;
+            flex-shrink: 0;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1.25rem;
+            background: #1f2937;
+            color: #fbbf24;
+            border: none;
+            border-radius: 1rem;
+            font-weight: 600;
+            font-size: 1.25rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            margin-top: 2rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .guarantee {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid rgba(251, 191, 36, 0.3);
+            font-size: 0.95rem;
+            color: #6b7280;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        .back-link a {
+            color: #1f2937;
+            text-decoration: none;
+            font-weight: 600;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+
+        .back-link a:hover {
+            opacity: 1;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #fbbf24;
+            border-top: 3px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>SlideGen Pro</h1>
+            <p>Start creating professional presentations powered by AI</p>
+        </div>
+
+        <div class="pricing-card">
+            <div class="price-header">
+                <div class="plan-name">Monthly Subscription</div>
+                <div class="price">$10<span class="price-period">/month</span></div>
+            </div>
+
+            <div class="features">
+                <h3>Everything you need to create amazing presentations</h3>
+                <ul>
+                    <li>10 AI-generated presentations per month</li>
+                    <li>Detailed speaker notes for every slide</li>
+                    <li>5 professional themes to choose from</li>
+                    <li>Upload documents for context-aware slides</li>
+                    <li>Export to PowerPoint (.pptx) format</li>
+                    <li>Priority customer support</li>
+                    <li>Cancel anytime, no questions asked</li>
+                </ul>
+            </div>
+
+            <button id="subscribe-btn" class="btn">Subscribe Now</button>
+
+            <div class="guarantee">
+                <strong>30-Day Money-Back Guarantee</strong><br>
+                Cancel within 30 days for a full refund, no questions asked.
+            </div>
+        </div>
+
+        <div class="back-link">
+            <a href="/landing.html">← Back to Home</a>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5001'
+            : window.location.origin;
+
+        document.getElementById('subscribe-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('subscribe-btn');
+            btn.disabled = true;
+            btn.innerHTML = 'Processing<span class="loading"></span>';
+
+            try {
+                const response = await fetch(`${API_URL}/api/payment/create-checkout-session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.url) {
+                    // Redirect to Stripe checkout
+                    window.location.href = data.url;
+                } else {
+                    alert(data.error || 'Failed to create checkout session. Please try again.');
+                    btn.disabled = false;
+                    btn.textContent = 'Subscribe Now';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Network error. Please check your connection and try again.');
+                btn.disabled = false;
+                btn.textContent = 'Subscribe Now';
+            }
+        });
+    </script>
+</body>
+</html>
