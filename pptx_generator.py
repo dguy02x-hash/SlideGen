@@ -101,8 +101,8 @@ class ThemeGenerator:
             "background": RGBColor(255, 85, 0),  # Deep orange for title/thank you
             "content_background": RGBColor(255, 211, 179),  # Light peach for content slides
             "title_text_color": RGBColor(0, 0, 0),  # Black text for title slides
-            "font": "Copperplate",
-            "title_font": "Copperplate",
+            "font": "Lobster",
+            "title_font": "Lobster",
             "layouts": ["right", "left", "top", "bottom"]
         },
         "Minimalist Gray": {
@@ -521,43 +521,44 @@ class ThemeGenerator:
 
         # Theme-specific title slides matching PNG previews
         if self.theme_name == "Sunset Orange":
-            # Orange-grey iridescent gradient background
+            # Orange gradient background
             bg = slide.shapes.add_shape(
                 MSO_SHAPE.RECTANGLE, 0, 0,
                 self.prs.slide_width, self.prs.slide_height
             )
             bg.fill.gradient()
             bg.fill.gradient_angle = 90.0  # Vertical gradient
-            # Orange to grey gradient
-            bg.fill.gradient_stops[0].color.rgb = RGBColor(255, 140, 0)  # Orange
-            bg.fill.gradient_stops[1].color.rgb = RGBColor(160, 160, 160)  # Grey
+            # Orange to lighter orange gradient
+            bg.fill.gradient_stops[0].color.rgb = RGBColor(255, 140, 0)  # Dark orange
+            bg.fill.gradient_stops[1].color.rgb = RGBColor(255, 200, 100)  # Light orange
             bg.line.fill.background()
 
-            # Title - left-aligned, middle of slide
+            # Title - centered, middle of slide, black text, Lobster font
             title_box = slide.shapes.add_textbox(
-                Inches(0.8), Inches(2.5), Inches(4), Inches(2.5)
+                Inches(1), Inches(2.5), Inches(8), Inches(1.5)
             )
             tf = title_box.text_frame
             tf.word_wrap = True
+            tf.vertical_anchor = MSO_ANCHOR.MIDDLE
             p = tf.paragraphs[0]
             p.text = title
             p.font.name = self.theme["title_font"]
-            p.font.size = Pt(66)
+            p.font.size = Pt(60)
             p.font.bold = True
             p.font.color.rgb = RGBColor(0, 0, 0)  # Black text
-            p.alignment = PP_ALIGN.LEFT
+            p.alignment = PP_ALIGN.CENTER
 
-            # Subtitle - bottom left
+            # Subtitle - centered below title, gray/brown text, Lobster font
             by_box = slide.shapes.add_textbox(
-                Inches(0.8), Inches(6.5), Inches(4), Inches(0.6)
+                Inches(1), Inches(4.5), Inches(8), Inches(0.8)
             )
             tf = by_box.text_frame
             p = tf.paragraphs[0]
-            p.text = f"By {presenter_name}"
+            p.text = f"Presented By {presenter_name}"
             p.font.name = self.theme["font"]
-            p.font.size = Pt(24)
-            p.font.color.rgb = RGBColor(0, 0, 0)
-            p.alignment = PP_ALIGN.LEFT
+            p.font.size = Pt(28)
+            p.font.color.rgb = RGBColor(120, 90, 60)  # Gray/brown
+            p.alignment = PP_ALIGN.CENTER
 
         elif self.theme_name == "Business Black and Yellow":
             # Black background
@@ -871,33 +872,26 @@ class ThemeGenerator:
         return slide
 
     def _add_sunset_orange_content(self, slide, title, bullets):
-        """Sunset Orange theme: Alternates between simple checkboxes and overview layouts"""
-        # Orange-grey iridescent gradient background
+        """Sunset Orange theme: Alternates between Body 1 and Body 2 layouts"""
+        # Orange gradient background
         bg = slide.shapes.add_shape(
             MSO_SHAPE.RECTANGLE, 0, 0,
             self.prs.slide_width, self.prs.slide_height
         )
         bg.fill.gradient()
         bg.fill.gradient_angle = 90.0  # Vertical gradient
-        # Orange to grey gradient
-        bg.fill.gradient_stops[0].color.rgb = RGBColor(255, 140, 0)  # Orange
-        bg.fill.gradient_stops[1].color.rgb = RGBColor(160, 160, 160)  # Grey
+        # Orange to lighter orange gradient
+        bg.fill.gradient_stops[0].color.rgb = RGBColor(255, 140, 0)  # Dark orange
+        bg.fill.gradient_stops[1].color.rgb = RGBColor(255, 200, 100)  # Light orange
         bg.line.fill.background()
 
-        # Alternate between layout 1 (simple) and layout 2 (overview)
+        # Alternate between Body 1 and Body 2 layouts
         if self.slide_count % 2 == 1:
-            # Layout 1: Light peach rounded rectangle with checkbox bullets
-            content_box = slide.shapes.add_shape(
-                MSO_SHAPE.ROUNDED_RECTANGLE,
-                Inches(0.8), Inches(1.2), Inches(8.4), Inches(5.5)
-            )
-            content_box.fill.solid()
-            content_box.fill.fore_color.rgb = self.theme["content_background"]
-            content_box.line.fill.background()
+            # Body 1: Title top left, 3 bullets left, rounded rectangle image right
 
-            # Title inside box
+            # Title - top left, black, Lobster font
             title_box = slide.shapes.add_textbox(
-                Inches(1.2), Inches(1.5), Inches(7.6), Inches(1)
+                Inches(0.5), Inches(0.5), Inches(5), Inches(0.8)
             )
             tf = title_box.text_frame
             tf.word_wrap = True
@@ -905,26 +899,29 @@ class ThemeGenerator:
             p = tf.paragraphs[0]
             p.text = title
             p.font.name = self.theme["font"]
-            p.font.size = Pt(44)  # Reduced from 54pt
-            p.font.bold = False
-            p.font.color.rgb = RGBColor(0, 0, 0)
+            p.font.size = Pt(36)
+            p.font.bold = True
+            p.font.color.rgb = RGBColor(0, 0, 0)  # Black
             p.alignment = PP_ALIGN.LEFT
 
-            # Checkbox bullets
-            y_pos = 2.8
-            for i, bullet in enumerate(bullets[:4]):  # Max 4 bullets
-                # Checkbox square
-                checkbox = slide.shapes.add_shape(
-                    MSO_SHAPE.RECTANGLE,
-                    Inches(1.5), Inches(y_pos), Inches(0.35), Inches(0.35)
+            # Bullets with dash markers - left side, gray/brown color
+            y_pos = 2.0
+            for i, bullet in enumerate(bullets[:3]):  # Max 3 bullets
+                # Dash marker
+                dash_box = slide.shapes.add_textbox(
+                    Inches(0.6), Inches(y_pos), Inches(0.3), Inches(0.5)
                 )
-                checkbox.fill.background()
-                checkbox.line.color.rgb = RGBColor(0, 0, 0)
-                checkbox.line.width = Pt(3)
+                tf = dash_box.text_frame
+                p = tf.paragraphs[0]
+                p.text = "-"
+                p.font.name = self.theme["font"]
+                p.font.size = Pt(32)
+                p.font.color.rgb = RGBColor(120, 90, 60)  # Gray/brown
+                p.alignment = PP_ALIGN.LEFT
 
                 # Bullet text
                 bullet_box = slide.shapes.add_textbox(
-                    Inches(2.1), Inches(y_pos - 0.05), Inches(6.5), Inches(0.8)  # Increased height
+                    Inches(1.1), Inches(y_pos), Inches(4.5), Inches(1.0)
                 )
                 tf = bullet_box.text_frame
                 tf.word_wrap = True
@@ -932,67 +929,88 @@ class ThemeGenerator:
                 p = tf.paragraphs[0]
                 p.text = bullet
                 p.font.name = self.theme["font"]
-                p.font.size = Pt(20)  # Reduced from 28pt
-                p.font.color.rgb = RGBColor(0, 0, 0)
+                p.font.size = Pt(20)
+                p.font.color.rgb = RGBColor(120, 90, 60)  # Gray/brown
                 p.alignment = PP_ALIGN.LEFT
 
-                y_pos += 0.9
-        else:
-            # Layout 2: Overview with two stacked boxes on right
-            # "Overview" title on left
-            overview_box = slide.shapes.add_textbox(
-                Inches(0.5), Inches(1.5), Inches(4.5), Inches(4.5)
+                y_pos += 1.3
+
+            # Rounded rectangle image placeholder - right side
+            img_placeholder = slide.shapes.add_shape(
+                MSO_SHAPE.ROUNDED_RECTANGLE,
+                Inches(6.0), Inches(2.0), Inches(3.5), Inches(4.5)
             )
-            tf = overview_box.text_frame
+            img_placeholder.fill.solid()
+            img_placeholder.fill.fore_color.rgb = RGBColor(200, 200, 200)  # Light gray
+            img_placeholder.line.fill.background()
+
+        else:
+            # Body 2: Title top center, 2 circular images left (overlapping), 4 bullets right
+
+            # Title - top center, black, Lobster font
+            title_box = slide.shapes.add_textbox(
+                Inches(2), Inches(0.5), Inches(6), Inches(0.8)
+            )
+            tf = title_box.text_frame
             tf.word_wrap = True
             tf.vertical_anchor = MSO_ANCHOR.TOP
             p = tf.paragraphs[0]
-            p.text = "Overview\n" + title
-            p.font.name = self.theme["font"]
-            p.font.size = Pt(48)  # Reduced from 72pt
-            p.font.bold = True
-            p.font.color.rgb = RGBColor(0, 0, 0)
-            p.alignment = PP_ALIGN.LEFT
-
-            # Single content box (right side) - showing all bullets
-            box1 = slide.shapes.add_shape(
-                MSO_SHAPE.ROUNDED_RECTANGLE,
-                Inches(5.3), Inches(0.8), Inches(4.2), Inches(5.9)
-            )
-            box1.fill.solid()
-            box1.fill.fore_color.rgb = self.theme["content_background"]
-            box1.line.fill.background()
-
-            # Topic label in box
-            topic1 = slide.shapes.add_textbox(
-                Inches(5.6), Inches(1.1), Inches(3.6), Inches(0.6)
-            )
-            tf = topic1.text_frame
-            p = tf.paragraphs[0]
-            p.text = "Topic"
+            p.text = title
             p.font.name = self.theme["font"]
             p.font.size = Pt(36)
-            p.font.bold = False
-            p.font.color.rgb = RGBColor(0, 0, 0)
+            p.font.bold = True
+            p.font.color.rgb = RGBColor(0, 0, 0)  # Black
+            p.alignment = PP_ALIGN.CENTER
 
-            # All bullet points in single box
-            bullets_box1 = slide.shapes.add_textbox(
-                Inches(5.6), Inches(1.8), Inches(3.6), Inches(4.6)
+            # Two circular image placeholders - left side, overlapping
+            # First circle (back)
+            circle1 = slide.shapes.add_shape(
+                MSO_SHAPE.OVAL,
+                Inches(0.8), Inches(2.5), Inches(3.0), Inches(3.0)
             )
-            tf = bullets_box1.text_frame
-            tf.word_wrap = True
-            tf.vertical_anchor = MSO_ANCHOR.TOP
-            for i, bullet in enumerate(bullets):
-                if i > 0:
-                    p = tf.add_paragraph()
-                else:
-                    p = tf.paragraphs[0]
+            circle1.fill.solid()
+            circle1.fill.fore_color.rgb = RGBColor(220, 220, 220)  # Light gray
+            circle1.line.fill.background()
+
+            # Second circle (front, overlapping)
+            circle2 = slide.shapes.add_shape(
+                MSO_SHAPE.OVAL,
+                Inches(2.2), Inches(3.0), Inches(3.0), Inches(3.0)
+            )
+            circle2.fill.solid()
+            circle2.fill.fore_color.rgb = RGBColor(200, 200, 200)  # Slightly darker gray
+            circle2.line.fill.background()
+
+            # Bullets with dash markers - right side, gray/brown color
+            y_pos = 2.2
+            for i, bullet in enumerate(bullets[:4]):  # Max 4 bullets
+                # Dash marker
+                dash_box = slide.shapes.add_textbox(
+                    Inches(5.5), Inches(y_pos), Inches(0.3), Inches(0.5)
+                )
+                tf = dash_box.text_frame
+                p = tf.paragraphs[0]
+                p.text = "-"
+                p.font.name = self.theme["font"]
+                p.font.size = Pt(32)
+                p.font.color.rgb = RGBColor(120, 90, 60)  # Gray/brown
+                p.alignment = PP_ALIGN.LEFT
+
+                # Bullet text
+                bullet_box = slide.shapes.add_textbox(
+                    Inches(6.0), Inches(y_pos), Inches(3.5), Inches(0.9)
+                )
+                tf = bullet_box.text_frame
+                tf.word_wrap = True
+                tf.vertical_anchor = MSO_ANCHOR.TOP
+                p = tf.paragraphs[0]
                 p.text = bullet
                 p.font.name = self.theme["font"]
-                p.font.size = Pt(14)
-                p.font.color.rgb = RGBColor(0, 0, 0)
-                p.level = 0  # Enable bullet formatting
-                p.bullet = True  # Add bullet character
+                p.font.size = Pt(18)
+                p.font.color.rgb = RGBColor(120, 90, 60)  # Gray/brown
+                p.alignment = PP_ALIGN.LEFT
+
+                y_pos += 1.0
 
     def _add_minimalist_gray_content(self, slide, title, bullets):
         """Minimalist Gray theme: Split layout with text left, image right"""
