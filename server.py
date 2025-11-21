@@ -18,6 +18,8 @@ from functools import wraps
 from dotenv import load_dotenv
 import stripe
 import time
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail, Email, To, Content
 
 # Load environment variables from .env file
 load_dotenv()
@@ -59,6 +61,15 @@ if not stripe.api_key:
     logger.warning("⚠️  STRIPE_SECRET_KEY not configured - payment features disabled")
 else:
     logger.info("✅ Stripe configured")
+
+# SendGrid configuration
+SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
+SENDGRID_FROM_EMAIL = os.environ.get('SENDGRID_FROM_EMAIL', 'noreply@slidegenpro.com')
+
+if not SENDGRID_API_KEY:
+    logger.warning("⚠️  SENDGRID_API_KEY not configured - email features disabled")
+else:
+    logger.info("✅ SendGrid configured")
 
 # Database initialization
 DB_PATH = 'slidegen.db'
@@ -131,6 +142,9 @@ def init_db():
             customer_email TEXT NOT NULL,
             stripe_customer_id TEXT,
             stripe_subscription_id TEXT,
+            confirmation_token TEXT UNIQUE,
+            token_expires_at TIMESTAMP,
+            email_verified INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             account_created INTEGER DEFAULT 0
         )
@@ -152,6 +166,38 @@ def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+def send_confirmation_email(to_email, confirmation_token):
+    """Send email confirmation with token link"""
+    if not SENDGRID_API_KEY:
+        logger.error("SendGrid not configured - cannot send email")
+        return False
+
+    try:
+        confirmation_url = f"{request.host_url}confirm-email.html?token={confirmation_token}"
+
+        message = Mail(
+            from_email=Email(SENDGRID_FROM_EMAIL),
+            to_emails=To(to_email),
+            subject='Confirm Your SlideGen Pro Account',
+            html_content=f'''
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #f59e0b;">Welcome to SlideGen Pro!</h2>
+                <p>Thank you for subscribing. Please confirm your email and create your password to get started.</p>
+                <p><a href="{confirmation_url}" style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Confirm Email & Create Password</a></p>
+                <p style="color: #666; font-size: 14px;">This link will expire in 24 hours.</p>
+                <p style="color: #666; font-size: 14px;">If you didn't request this, please ignore this email.</p>
+            </div>
+            '''
+        )
+
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        response = sg.send(message)
+        logger.info(f"Confirmation email sent to {to_email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send email to {to_email}: {str(e)}")
+        return False
 
 def login_required(f):
     """Decorator to require login for endpoints"""
@@ -544,39 +590,102 @@ def get_pending_subscription():
         logger.error(f"Error retrieving pending subscription: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/auth/complete-registration', methods=['POST'])
-def complete_registration():
-    """Complete account registration after payment"""
+@app.route('/api/auth/verify-email', methods=['GET'])
+def verify_email():
+    """Verify email confirmation token"""
     try:
-        data = request.json
-        session_id = data.get('session_id')
-        email = data.get('email')
-        password = data.get('password')
+        token = request.args.get('token')
 
-        if not all([session_id, email, password]):
-            return jsonify({'error': 'All fields are required'}), 400
-
-        # Validate password length
-        if len(password) < 6:
-            return jsonify({'error': 'Password must be at least 6 characters'}), 400
+        if not token:
+            return jsonify({'error': 'Token is required'}), 400
 
         conn = get_db()
         cursor = conn.cursor()
 
-        # Get pending subscription
+        # Get pending subscription by token
         pending = cursor.execute(
-            'SELECT * FROM pending_subscriptions WHERE session_id = ? AND account_created = 0',
-            (session_id,)
+            'SELECT * FROM pending_subscriptions WHERE confirmation_token = ? AND account_created = 0',
+            (token,)
+        ).fetchone()
+        conn.close()
+
+        if not pending:
+            return jsonify({'error': 'Invalid confirmation token', 'valid': False}), 400
+
+        # Check if token is expired
+        token_expires_at = datetime.fromisoformat(pending['token_expires_at'])
+        if datetime.utcnow() > token_expires_at:
+            return jsonify({'error': 'Confirmation link has expired', 'valid': False}), 400
+
+        # Check if email was already verified
+        if pending.get('email_verified'):
+            # If already verified but account not created yet, still allow password creation
+            return jsonify({
+                'valid': True,
+                'email': pending['customer_email']
+            })
+
+        # Mark email as verified
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            'UPDATE pending_subscriptions SET email_verified = 1 WHERE confirmation_token = ?',
+            (token,)
+        )
+        conn.commit()
+        conn.close()
+
+        logger.info(f"Email verified for {pending['customer_email']}")
+
+        return jsonify({
+            'valid': True,
+            'email': pending['customer_email']
+        })
+
+    except Exception as e:
+        logger.error(f"Error verifying email: {str(e)}")
+        return jsonify({'error': str(e), 'valid': False}), 500
+
+@app.route('/api/auth/complete-registration', methods=['POST'])
+def complete_registration():
+    """Complete account registration after email confirmation"""
+    try:
+        data = request.json
+        token = data.get('token')
+        password = data.get('password')
+
+        if not all([token, password]):
+            return jsonify({'error': 'Token and password are required'}), 400
+
+        # Validate password length
+        if len(password) < 8:
+            return jsonify({'error': 'Password must be at least 8 characters'}), 400
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Get pending subscription by token
+        pending = cursor.execute(
+            'SELECT * FROM pending_subscriptions WHERE confirmation_token = ? AND account_created = 0',
+            (token,)
         ).fetchone()
 
         if not pending:
             conn.close()
-            return jsonify({'error': 'Invalid or expired session'}), 400
+            return jsonify({'error': 'Invalid or expired confirmation token'}), 400
 
-        # Verify email matches
-        if pending['customer_email'].lower() != email.lower():
+        # Verify token is not expired
+        token_expires_at = datetime.fromisoformat(pending['token_expires_at'])
+        if datetime.utcnow() > token_expires_at:
             conn.close()
-            return jsonify({'error': 'Email does not match subscription'}), 400
+            return jsonify({'error': 'Confirmation link has expired'}), 400
+
+        # Verify email was confirmed
+        if not pending.get('email_verified'):
+            conn.close()
+            return jsonify({'error': 'Email must be verified first'}), 400
+
+        email = pending['customer_email']
 
         # Check if email already exists
         existing = cursor.execute('SELECT id FROM users WHERE email = ?', (email.lower(),)).fetchone()
@@ -598,8 +707,8 @@ def complete_registration():
 
         # Mark pending subscription as completed
         cursor.execute(
-            'UPDATE pending_subscriptions SET account_created = 1 WHERE session_id = ?',
-            (session_id,)
+            'UPDATE pending_subscriptions SET account_created = 1 WHERE confirmation_token = ?',
+            (token,)
         )
 
         conn.commit()
@@ -727,18 +836,31 @@ def stripe_webhook():
         stripe_customer_id = session_obj.get('customer')
         stripe_subscription_id = session_obj.get('subscription')
 
-        # Store pending subscription - account will be created later
+        # Generate confirmation token and expiration (24 hours)
+        confirmation_token = secrets.token_urlsafe(32)
+        token_expires_at = datetime.utcnow() + timedelta(hours=24)
+
+        # Store pending subscription - account will be created after email confirmation
         conn = get_db()
         cursor = conn.cursor()
 
         try:
             cursor.execute('''
                 INSERT INTO pending_subscriptions
-                (session_id, customer_email, stripe_customer_id, stripe_subscription_id)
-                VALUES (?, ?, ?, ?)
-            ''', (session_id, customer_email, stripe_customer_id, stripe_subscription_id))
+                (session_id, customer_email, stripe_customer_id, stripe_subscription_id,
+                 confirmation_token, token_expires_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (session_id, customer_email, stripe_customer_id, stripe_subscription_id,
+                  confirmation_token, token_expires_at))
             conn.commit()
-            logger.info(f"Stored pending subscription for {customer_email}")
+            logger.info(f"Stored pending subscription for {customer_email} with confirmation token")
+
+            # Send confirmation email
+            email_sent = send_confirmation_email(customer_email, confirmation_token)
+            if email_sent:
+                logger.info(f"✅ Confirmation email sent to {customer_email}")
+            else:
+                logger.error(f"❌ Failed to send confirmation email to {customer_email}")
         except Exception as e:
             logger.error(f"Error storing pending subscription: {str(e)}")
         finally:
