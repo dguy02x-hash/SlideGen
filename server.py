@@ -1414,6 +1414,11 @@ def serve_app():
     """Serve the main app"""
     return send_from_directory('.', 'app.html')
 
+@app.route('/subscribe.html')
+def serve_subscribe():
+    """Serve the subscription page"""
+    return send_from_directory('.', 'subscribe.html')
+
 @app.route('/payment-success')
 def payment_success():
     """Serve payment success page"""
