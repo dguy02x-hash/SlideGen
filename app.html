@@ -514,25 +514,73 @@
                 <h1>Create Account</h1>
                 <p>Subscribe to start creating presentations!</p>
             </div>
-            
+
             <div id="signup-error" class="error-message"></div>
-            
+
             <form id="signup-form">
                 <div class="input-group">
                     <label for="signup-email">Email</label>
                     <input type="email" id="signup-email" required placeholder="your@email.com">
                 </div>
-                
+
                 <div class="input-group">
                     <label for="signup-password">Password</label>
                     <input type="password" id="signup-password" required placeholder="At least 6 characters">
                     <small>Password must be at least 6 characters</small>
                 </div>
-                
+
                 <button type="submit" class="btn btn-primary">Create Account</button>
             </form>
-            
+
             <button class="link-button" onclick="showPage('signin-page')">Already have an account? Sign In</button>
+        </div>
+    </div>
+
+    <!-- Subscription Page -->
+    <div id="subscription-page" class="page">
+        <div class="card">
+            <div class="logo">
+                <h1>Subscribe to SlideGen Pro</h1>
+                <p>Get started with premium features</p>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <div style="font-size: 48px; font-weight: bold; color: #FF8C00; margin-bottom: 10px;">
+                    $5.99<span style="font-size: 20px; font-weight: normal; color: #666;">/month</span>
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 140, 0, 0.1) 100%); padding: 25px; border-radius: 15px; margin: 20px 0;">
+                <h3 style="margin-bottom: 15px; font-size: 18px; color: #333;">Premium Features Include:</h3>
+                <ul style="list-style: none; padding: 0; margin: 0;">
+                    <li style="padding: 10px 0; display: flex; align-items: center; gap: 12px; font-size: 15px;">
+                        <span style="color: #FF8C00; font-size: 20px; font-weight: bold;">✓</span>
+                        <span>10 AI-generated presentations per month</span>
+                    </li>
+                    <li style="padding: 10px 0; display: flex; align-items: center; gap: 12px; font-size: 15px;">
+                        <span style="color: #FF8C00; font-size: 20px; font-weight: bold;">✓</span>
+                        <span>Detailed AI speaker notes for every slide</span>
+                    </li>
+                    <li style="padding: 10px 0; display: flex; align-items: center; gap: 12px; font-size: 15px;">
+                        <span style="color: #FF8C00; font-size: 20px; font-weight: bold;">✓</span>
+                        <span>Multiple professional themes</span>
+                    </li>
+                    <li style="padding: 10px 0; display: flex; align-items: center; gap: 12px; font-size: 15px;">
+                        <span style="color: #FF8C00; font-size: 20px; font-weight: bold;">✓</span>
+                        <span>Document upload support (PDF, Word, TXT)</span>
+                    </li>
+                    <li style="padding: 10px 0; display: flex; align-items: center; gap: 12px; font-size: 15px;">
+                        <span style="color: #FF8C00; font-size: 20px; font-weight: bold;">✓</span>
+                        <span>Priority support</span>
+                    </li>
+                </ul>
+            </div>
+
+            <button class="btn btn-primary" onclick="upgradeSubscription()" style="margin-top: 20px; font-size: 18px; padding: 16px;">
+                Subscribe Now with Stripe
+            </button>
+
+            <button class="btn btn-secondary" onclick="logout()">Logout</button>
         </div>
     </div>
 
@@ -817,7 +865,7 @@
             e.preventDefault();
             const email = document.getElementById('signin-email').value;
             const password = document.getElementById('signin-password').value;
-            
+
             try {
                 const response = await fetch(`${API_URL}/api/auth/login`, {
                     method: 'POST',
@@ -825,13 +873,19 @@
                     credentials: 'include',
                     body: JSON.stringify({ email, password })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     currentUser = data.user;
                     updateGenerationsDisplay();
-                    showPage('topic-page');
+
+                    // Check subscription status and redirect accordingly
+                    if (currentUser.subscription_status === 'active') {
+                        showPage('topic-page');
+                    } else {
+                        showPage('subscription-page');
+                    }
                 } else {
                     document.getElementById('signin-error').textContent = data.error;
                     document.getElementById('signin-error').classList.add('active');
@@ -845,7 +899,7 @@
             e.preventDefault();
             const email = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
-            
+
             try {
                 const response = await fetch(`${API_URL}/api/auth/signup`, {
                     method: 'POST',
@@ -853,16 +907,16 @@
                     credentials: 'include',
                     body: JSON.stringify({ email, password })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     currentUser = data.user;
-                    showSuccessModal('Account created successfully! Subscribe now to start creating presentations.');
+                    showSuccessModal('Account created successfully! Please subscribe to start creating presentations.');
                     setTimeout(() => {
                         closeModal();
                         updateGenerationsDisplay();
-                        showPage('topic-page');
+                        showPage('subscription-page');
                     }, 2000);
                 } else {
                     document.getElementById('signup-error').textContent = data.error;
@@ -899,25 +953,26 @@
 
         async function upgradeSubscription() {
             try {
-                const response = await fetch(`${API_URL}/api/subscription/upgrade`, {
+                // Create Stripe Checkout session
+                const response = await fetch(`${API_URL}/api/payment/create-checkout-session`, {
                     method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
                     credentials: 'include'
                 });
-                
+
                 const data = await response.json();
-                
-                if (response.ok) {
-                    showSuccessModal('Successfully subscribed! You now have 10 presentations per month.');
-                    currentUser.subscription_status = 'premium';
-                    currentUser.generations_limit = 10;
-                    currentUser.generations_used = 0;
-                    updateGenerationsDisplay();
-                    document.getElementById('upgrade-banner').style.display = 'none';
-                } else{
-                    showErrorModal(data.error);
+
+                if (response.ok && data.url) {
+                    // Redirect to Stripe Checkout
+                    window.location.href = data.url;
+                } else {
+                    showErrorModal(data.error || 'Failed to create checkout session');
                 }
             } catch (error) {
-                showErrorModal('Upgrade failed. Please try again.');
+                console.error('Checkout error:', error);
+                showErrorModal('Failed to start checkout. Please try again.');
             }
         }
 
@@ -1324,12 +1379,18 @@
                 const response = await fetch(`${API_URL}/api/auth/me`, {
                     credentials: 'include'
                 });
-                
+
                 if (response.ok) {
                     const data = await response.json();
                     currentUser = data.user;
                     updateGenerationsDisplay();
-                    showPage('topic-page');
+
+                    // Check subscription status and redirect accordingly
+                    if (currentUser.subscription_status === 'active') {
+                        showPage('topic-page');
+                    } else {
+                        showPage('subscription-page');
+                    }
                 }
             } catch (error) {
                 // User not authenticated, stay on signin page
