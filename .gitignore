@@ -54,3 +54,12 @@ Thumbs.db
 *.tmp
 temp/
 tmp/
+
+# Backup files
+server_*.py
+*.backup
+*.bak
+
+# Binaries
+stripe
+*.pptx
