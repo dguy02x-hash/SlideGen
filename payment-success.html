@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Successful - SlideGen Pro</title>
+    <title>Create Your Account - SlideGen Pro</title>
     <style>
         * {
             margin: 0;
@@ -23,8 +23,8 @@
         }
 
         .container {
-            max-width: 600px;
-            text-align: center;
+            max-width: 500px;
+            width: 100%;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             padding: 3rem;
@@ -33,57 +33,118 @@
         }
 
         .success-icon {
-            font-size: 5rem;
-            margin-bottom: 1.5rem;
-            animation: bounce 1s ease-in-out;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            text-align: center;
         }
 
         h1 {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            text-align: center;
         }
 
-        p {
-            font-size: 1.125rem;
+        .subtitle {
+            text-align: center;
+            opacity: 0.8;
             margin-bottom: 2rem;
-            opacity: 0.95;
-            line-height: 1.6;
+            font-size: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #f59e0b;
+        }
+
+        input:disabled {
+            background-color: #f3f4f6;
+            cursor: not-allowed;
         }
 
         .btn {
-            display: inline-block;
-            padding: 1rem 2.5rem;
+            width: 100%;
+            padding: 1rem;
             background: #1f2937;
             color: #fbbf24;
-            text-decoration: none;
+            border: none;
             border-radius: 0.75rem;
             font-weight: 600;
             font-size: 1.125rem;
+            cursor: pointer;
             transition: all 0.3s;
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
 
-        .btn:hover {
+        .btn:hover:not(:disabled) {
             transform: translateY(-3px);
             box-shadow: 0 8px 20px rgba(0,0,0,0.3);
         }
 
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-message {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 0.875rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #f59e0b;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         .features {
-            margin: 2rem 0;
-            text-align: left;
-            background: rgba(251, 191, 36, 0.2);
-            padding: 1.5rem;
-            border-radius: 1rem;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid rgba(251, 191, 36, 0.3);
         }
 
         .features h3 {
+            font-size: 1rem;
             margin-bottom: 1rem;
-            font-size: 1.25rem;
+            text-align: center;
         }
 
         .features ul {
@@ -95,35 +156,159 @@
             display: flex;
             align-items: center;
             gap: 0.75rem;
+            font-size: 0.95rem;
         }
 
         .features li::before {
             content: "✓";
             font-size: 1.25rem;
             font-weight: bold;
+            color: #059669;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="success-icon">🎉</div>
-        <h1>Welcome to SlideGen Pro!</h1>
-        <p>Your subscription is now active. Thank you for subscribing!</p>
-
-        <div class="features">
-            <h3>You now have access to:</h3>
-            <ul>
-                <li>10 AI-generated presentations per month</li>
-                <li>Detailed speaker notes for every slide</li>
-                <li>Multiple professional themes</li>
-                <li>Document upload support</li>
-                <li>Priority support</li>
-            </ul>
+        <div id="loading-state" class="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 1rem;">Loading your subscription...</p>
         </div>
 
-        <p>You can start creating amazing presentations right now!</p>
+        <div id="form-state" style="display: none;">
+            <div class="success-icon">🎉</div>
+            <h1>Payment Successful!</h1>
+            <p class="subtitle">Create your SlideGen Pro account to get started</p>
 
-        <a href="/app.html" class="btn">Start Creating</a>
+            <div class="error-message" id="error-message"></div>
+
+            <form id="registration-form">
+                <input type="hidden" id="session-id" name="session_id">
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required disabled>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Create Password (min. 6 characters)</label>
+                    <input type="password" id="password" name="password" required minlength="6">
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm-password">Confirm Password</label>
+                    <input type="password" id="confirm-password" name="confirm_password" required minlength="6">
+                </div>
+
+                <button type="submit" class="btn" id="submit-btn">Create Account & Start Creating</button>
+            </form>
+
+            <div class="features">
+                <h3>Your Premium Benefits</h3>
+                <ul>
+                    <li>10 AI-generated presentations per month</li>
+                    <li>Detailed speaker notes for every slide</li>
+                    <li>Multiple professional themes</li>
+                    <li>Document upload support</li>
+                    <li>Priority support</li>
+                </ul>
+            </div>
+        </div>
     </div>
+
+    <script>
+        const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5001'
+            : window.location.origin;
+
+        // Get session_id from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session_id');
+
+        if (!sessionId) {
+            document.getElementById('loading-state').innerHTML = '<p style="color: #991b1b;">❌ Invalid session. Please contact support.</p>';
+        } else {
+            // Fetch pending subscription data
+            fetch(`${API_URL}/api/auth/pending-subscription?session_id=${sessionId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        document.getElementById('loading-state').innerHTML = `<p style="color: #991b1b;">❌ ${data.error}</p>`;
+                    } else {
+                        // Populate form
+                        document.getElementById('session-id').value = data.session_id;
+                        document.getElementById('email').value = data.email;
+
+                        // Show form
+                        document.getElementById('loading-state').style.display = 'none';
+                        document.getElementById('form-state').style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('loading-state').innerHTML = '<p style="color: #991b1b;">❌ Error loading subscription data. Please try again.</p>';
+                    console.error('Error:', error);
+                });
+        }
+
+        // Handle form submission
+        document.getElementById('registration-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const errorMessage = document.getElementById('error-message');
+            const submitBtn = document.getElementById('submit-btn');
+
+            // Clear previous errors
+            errorMessage.style.display = 'none';
+
+            // Validate passwords match
+            if (password !== confirmPassword) {
+                errorMessage.textContent = 'Passwords do not match';
+                errorMessage.style.display = 'block';
+                return;
+            }
+
+            // Disable button
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating Account...';
+
+            try {
+                const response = await fetch(`${API_URL}/api/auth/complete-registration`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        session_id: document.getElementById('session-id').value,
+                        email: document.getElementById('email').value,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Success - redirect to app
+                    submitBtn.textContent = 'Success! Redirecting...';
+                    setTimeout(() => {
+                        window.location.href = '/app.html';
+                    }, 1000);
+                } else {
+                    // Error
+                    errorMessage.textContent = data.error || 'An error occurred. Please try again.';
+                    errorMessage.style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Create Account & Start Creating';
+                }
+            } catch (error) {
+                errorMessage.textContent = 'Network error. Please check your connection and try again.';
+                errorMessage.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Account & Start Creating';
+                console.error('Error:', error);
+            }
+        });
+    </script>
 </body>
 </html>

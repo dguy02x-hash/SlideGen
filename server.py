@@ -122,7 +122,20 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
     ''')
-    
+
+    # Pending subscriptions table - for users who paid but haven't created account yet
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS pending_subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT UNIQUE NOT NULL,
+            customer_email TEXT NOT NULL,
+            stripe_customer_id TEXT,
+            stripe_subscription_id TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            account_created INTEGER DEFAULT 0
+        )
+    ''')
+
     conn.commit()
     conn.close()
     logger.info("Database initialized successfully")
@@ -502,6 +515,116 @@ def auth_me():
     """Alias for auth_status - for frontend compatibility"""
     return auth_status()
 
+@app.route('/api/auth/pending-subscription', methods=['GET'])
+def get_pending_subscription():
+    """Get pending subscription data by session_id"""
+    try:
+        session_id = request.args.get('session_id')
+
+        if not session_id:
+            return jsonify({'error': 'Session ID is required'}), 400
+
+        conn = get_db()
+        cursor = conn.cursor()
+        pending = cursor.execute(
+            'SELECT * FROM pending_subscriptions WHERE session_id = ? AND account_created = 0',
+            (session_id,)
+        ).fetchone()
+        conn.close()
+
+        if not pending:
+            return jsonify({'error': 'No pending subscription found'}), 404
+
+        return jsonify({
+            'email': pending['customer_email'],
+            'session_id': pending['session_id']
+        })
+
+    except Exception as e:
+        logger.error(f"Error retrieving pending subscription: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/auth/complete-registration', methods=['POST'])
+def complete_registration():
+    """Complete account registration after payment"""
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        email = data.get('email')
+        password = data.get('password')
+
+        if not all([session_id, email, password]):
+            return jsonify({'error': 'All fields are required'}), 400
+
+        # Validate password length
+        if len(password) < 6:
+            return jsonify({'error': 'Password must be at least 6 characters'}), 400
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Get pending subscription
+        pending = cursor.execute(
+            'SELECT * FROM pending_subscriptions WHERE session_id = ? AND account_created = 0',
+            (session_id,)
+        ).fetchone()
+
+        if not pending:
+            conn.close()
+            return jsonify({'error': 'Invalid or expired session'}), 400
+
+        # Verify email matches
+        if pending['customer_email'].lower() != email.lower():
+            conn.close()
+            return jsonify({'error': 'Email does not match subscription'}), 400
+
+        # Check if email already exists
+        existing = cursor.execute('SELECT id FROM users WHERE email = ?', (email.lower(),)).fetchone()
+        if existing:
+            conn.close()
+            return jsonify({'error': 'Account already exists with this email'}), 400
+
+        # Create user account with premium subscription
+        password_hash = generate_password_hash(password)
+        cursor.execute('''
+            INSERT INTO users
+            (email, password_hash, subscription_status, generations_limit, generations_used,
+             last_reset, stripe_customer_id, stripe_subscription_id)
+            VALUES (?, ?, 'premium', 10, 0, ?, ?, ?)
+        ''', (email.lower(), password_hash, datetime.now().isoformat(),
+              pending['stripe_customer_id'], pending['stripe_subscription_id']))
+
+        user_id = cursor.lastrowid
+
+        # Mark pending subscription as completed
+        cursor.execute(
+            'UPDATE pending_subscriptions SET account_created = 1 WHERE session_id = ?',
+            (session_id,)
+        )
+
+        conn.commit()
+        conn.close()
+
+        # Log the user in
+        session['user_id'] = user_id
+        session.permanent = True
+
+        logger.info(f"Account created and activated for {email}")
+
+        return jsonify({
+            'success': True,
+            'message': 'Account created successfully',
+            'user': {
+                'id': user_id,
+                'email': email,
+                'subscription_status': 'premium'
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Error completing registration: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 # ============= Theme Endpoints =============
 
 @app.route('/api/themes/list', methods=['GET'])
@@ -554,54 +677,25 @@ def payment_config():
     })
 
 @app.route('/api/payment/create-checkout-session', methods=['POST'])
-@login_required
 def create_checkout_session():
-    """Create Stripe checkout session for subscription"""
+    """Create Stripe checkout session for subscription - no login required"""
     try:
-        user_id = session['user_id']
-        
-        conn = get_db()
-        cursor = conn.cursor()
-        user = cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
-        conn.close()
-        
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        
-        # Create or retrieve Stripe customer
-        if user['stripe_customer_id']:
-            customer_id = user['stripe_customer_id']
-        else:
-            customer = stripe.Customer.create(
-                email=user['email'],
-                metadata={'user_id': user_id}
-            )
-            customer_id = customer.id
-            
-            # Update database with customer ID
-            conn = get_db()
-            cursor = conn.cursor()
-            cursor.execute('UPDATE users SET stripe_customer_id = ? WHERE id = ?', 
-                         (customer_id, user_id))
-            conn.commit()
-            conn.close()
-        
-        # Create checkout session
+        # Create checkout session - customer email will be collected by Stripe
         checkout_session = stripe.checkout.Session.create(
-            customer=customer_id,
             payment_method_types=['card'],
             line_items=[{
                 'price': STRIPE_PRICE_ID,
                 'quantity': 1,
             }],
             mode='subscription',
-            success_url=request.host_url + 'payment-success?session_id={CHECKOUT_SESSION_ID}',
-            cancel_url=request.host_url + 'payment-cancelled',
-            metadata={'user_id': user_id}
+            success_url=request.host_url + 'payment-success.html?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url=request.host_url + 'landing.html',
+            customer_email=None,  # Let Stripe collect email
+            allow_promotion_codes=True,
         )
 
         return jsonify({'url': checkout_session.url, 'sessionId': checkout_session.id})
-    
+
     except Exception as e:
         logger.error(f"Checkout session error: {str(e)}")
         return jsonify({'error': str(e)}), 500
@@ -627,26 +721,28 @@ def stripe_webhook():
     
     # Handle subscription events
     if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        user_id = session['metadata'].get('user_id')
-        
-        if user_id:
-            # Activate premium subscription
-            conn = get_db()
-            cursor = conn.cursor()
+        session_obj = event['data']['object']
+        session_id = session_obj['id']
+        customer_email = session_obj.get('customer_details', {}).get('email')
+        stripe_customer_id = session_obj.get('customer')
+        stripe_subscription_id = session_obj.get('subscription')
+
+        # Store pending subscription - account will be created later
+        conn = get_db()
+        cursor = conn.cursor()
+
+        try:
             cursor.execute('''
-                UPDATE users 
-                SET subscription_status = 'premium',
-                    generations_limit = 10,
-                    generations_used = 0,
-                    last_reset = ?,
-                    stripe_subscription_id = ?
-                WHERE id = ?
-            ''', (datetime.now().isoformat(), session.get('subscription'), user_id))
+                INSERT INTO pending_subscriptions
+                (session_id, customer_email, stripe_customer_id, stripe_subscription_id)
+                VALUES (?, ?, ?, ?)
+            ''', (session_id, customer_email, stripe_customer_id, stripe_subscription_id))
             conn.commit()
+            logger.info(f"Stored pending subscription for {customer_email}")
+        except Exception as e:
+            logger.error(f"Error storing pending subscription: {str(e)}")
+        finally:
             conn.close()
-            
-            logger.info(f"User {user_id} upgraded to premium")
     
     elif event['type'] == 'invoice.payment_succeeded':
         invoice = event['data']['object']
