@@ -16,6 +16,14 @@ from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 
+# Import grammar checking function from server
+try:
+    from server import proofread_slide_text
+except ImportError:
+    # Fallback if import fails
+    def proofread_slide_text(text, max_tokens=500):
+        return text
+
 class ThemeGenerator:
     """
     Generate themed PowerPoint presentations with image placeholders
@@ -31,8 +39,8 @@ class ThemeGenerator:
             "text_color": RGBColor(255, 255, 255),
             "accent_color": RGBColor(255, 215, 0),
             "background": RGBColor(0, 0, 0),
-            "font": "Arial",
-            "title_font": "Arial Black",
+            "font": "Impact",
+            "title_font": "Impact",
             "layouts": ["right", "left", "top", "bottom"]  # Cycles through these
         },
         "Autumn Brown and Orange": {
@@ -93,8 +101,8 @@ class ThemeGenerator:
             "background": RGBColor(255, 85, 0),  # Deep orange for title/thank you
             "content_background": RGBColor(255, 211, 179),  # Light peach for content slides
             "title_text_color": RGBColor(0, 0, 0),  # Black text for title slides
-            "font": "American Typewriter",
-            "title_font": "Academy Engraved LET",
+            "font": "Copperplate",
+            "title_font": "Copperplate",
             "layouts": ["right", "left", "top", "bottom"]
         },
         "Minimalist Gray": {
@@ -513,13 +521,16 @@ class ThemeGenerator:
 
         # Theme-specific title slides matching PNG previews
         if self.theme_name == "Sunset Orange":
-            # Deep orange background
+            # Orange-grey iridescent gradient background
             bg = slide.shapes.add_shape(
                 MSO_SHAPE.RECTANGLE, 0, 0,
                 self.prs.slide_width, self.prs.slide_height
             )
-            bg.fill.solid()
-            bg.fill.fore_color.rgb = self.theme["background"]
+            bg.fill.gradient()
+            bg.fill.gradient_angle = 90.0  # Vertical gradient
+            # Orange to grey gradient
+            bg.fill.gradient_stops[0].color.rgb = RGBColor(255, 140, 0)  # Orange
+            bg.fill.gradient_stops[1].color.rgb = RGBColor(160, 160, 160)  # Grey
             bg.line.fill.background()
 
             # Title - left-aligned, middle of slide
@@ -858,13 +869,16 @@ class ThemeGenerator:
 
     def _add_sunset_orange_content(self, slide, title, bullets):
         """Sunset Orange theme: Alternates between simple checkboxes and overview layouts"""
-        # Deep orange background
+        # Orange-grey iridescent gradient background
         bg = slide.shapes.add_shape(
             MSO_SHAPE.RECTANGLE, 0, 0,
             self.prs.slide_width, self.prs.slide_height
         )
-        bg.fill.solid()
-        bg.fill.fore_color.rgb = self.theme["background"]
+        bg.fill.gradient()
+        bg.fill.gradient_angle = 90.0  # Vertical gradient
+        # Orange to grey gradient
+        bg.fill.gradient_stops[0].color.rgb = RGBColor(255, 140, 0)  # Orange
+        bg.fill.gradient_stops[1].color.rgb = RGBColor(160, 160, 160)  # Grey
         bg.line.fill.background()
 
         # Alternate between layout 1 (simple) and layout 2 (overview)
@@ -1088,6 +1102,10 @@ class ThemeGenerator:
 
     def _add_simplistic_red_content(self, slide, title, bullets):
         """Simplistic Red and White theme: Split layout with decorative elements"""
+        # AI Grammar check for Simplistic Red and White theme
+        title = proofread_slide_text(title)
+        bullets = [proofread_slide_text(bullet) for bullet in bullets]
+
         # White background
         bg = slide.shapes.add_shape(
             MSO_SHAPE.RECTANGLE, 0, 0,
@@ -1272,13 +1290,20 @@ class ThemeGenerator:
         """Add thank you slide - programmatically generated based on theme"""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
 
-        # Background
+        # Background - gradient for Sunset Orange, solid for others
         bg = slide.shapes.add_shape(
             MSO_SHAPE.RECTANGLE, 0, 0,
             self.prs.slide_width, self.prs.slide_height
         )
-        bg.fill.solid()
-        bg.fill.fore_color.rgb = self.theme["background"]
+        if self.theme_name == "Sunset Orange":
+            bg.fill.gradient()
+            bg.fill.gradient_angle = 90.0  # Vertical gradient
+            # Orange to grey gradient
+            bg.fill.gradient_stops[0].color.rgb = RGBColor(255, 140, 0)  # Orange
+            bg.fill.gradient_stops[1].color.rgb = RGBColor(160, 160, 160)  # Grey
+        else:
+            bg.fill.solid()
+            bg.fill.fore_color.rgb = self.theme["background"]
         bg.line.fill.background()
 
         # "Thank You" text - centered

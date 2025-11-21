@@ -616,6 +616,15 @@
                     </label>
                     <input type="file" id="document-upload" accept=".pdf,.doc,.docx,.txt" style="margin-top: 10px;">
                     <small style="display: block; margin-top: 8px; color: #666;">Upload a PDF, Word document, or text file. AI will read the content and create a presentation from it.</small>
+                    <div id="file-display" style="display: none; margin-top: 12px; padding: 10px; background: white; border-radius: 6px; border: 2px solid #e0e0e0;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 18px;">📎</span>
+                                <span id="file-name" style="font-weight: 600; color: #333;"></span>
+                            </div>
+                            <button type="button" id="remove-file-btn" style="background: #dc3545; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; font-weight: bold;">×</button>
+                        </div>
+                    </div>
                     <div id="file-status" style="margin-top: 10px; font-weight: bold;"></div>
                 </div>
 
@@ -808,7 +817,7 @@
         // Configuration
         // Use window.location.origin for production, fallback to localhost for development
         const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? 'http://localhost:3000'
+            ? 'http://localhost:5001'
             : window.location.origin;
         let currentUser = null;
         let presentationData = {
@@ -881,7 +890,7 @@
                     updateGenerationsDisplay();
 
                     // Check subscription status and redirect accordingly
-                    if (currentUser.subscription_status === 'active') {
+                    if (currentUser.subscription_status === 'active' || currentUser.subscription_status === 'premium') {
                         showPage('topic-page');
                     } else {
                         showPage('subscription-page');
@@ -976,12 +985,34 @@
             }
         }
 
+        // File upload display and remove functionality
+        const fileInput = document.getElementById('document-upload');
+        const fileDisplay = document.getElementById('file-display');
+        const fileName = document.getElementById('file-name');
+        const removeFileBtn = document.getElementById('remove-file-btn');
+
+        // Show file name when file is selected
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                fileName.textContent = this.files[0].name;
+                fileDisplay.style.display = 'block';
+            } else {
+                fileDisplay.style.display = 'none';
+            }
+        });
+
+        // Remove file when X button is clicked
+        removeFileBtn.addEventListener('click', function() {
+            fileInput.value = '';
+            fileDisplay.style.display = 'none';
+            document.getElementById('file-status').textContent = '';
+        });
+
         // Topic form
         document.getElementById('topic-form').addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const topicInput = document.getElementById('topic').value.trim();
-            const fileInput = document.getElementById('document-upload');
             const fileStatus = document.getElementById('file-status');
 
             // Check if file is uploaded
@@ -1061,7 +1092,7 @@
                     // Add preview images
                     theme.previews.forEach((preview, previewIndex) => {
                         const img = document.createElement('img');
-                        img.src = `http://localhost:3000${preview}`;
+                        img.src = `${API_URL}${preview}`;
                         img.alt = `${theme.name} preview ${previewIndex + 1}`;
                         img.className = 'theme-preview-img';
                         if (previewIndex === 0) img.classList.add('active');
@@ -1368,7 +1399,12 @@
             document.getElementById('topic').value = '';
             document.getElementById('presentation-title').value = '';
             document.getElementById('num-slides').value = 10;
-            
+
+            // Clear file upload
+            document.getElementById('document-upload').value = '';
+            document.getElementById('file-display').style.display = 'none';
+            document.getElementById('file-status').textContent = '';
+
             updateGenerationsDisplay();
             showPage('topic-page');
         }
@@ -1386,7 +1422,7 @@
                     updateGenerationsDisplay();
 
                     // Check subscription status and redirect accordingly
-                    if (currentUser.subscription_status === 'active') {
+                    if (currentUser.subscription_status === 'active' || currentUser.subscription_status === 'premium') {
                         showPage('topic-page');
                     } else {
                         showPage('subscription-page');

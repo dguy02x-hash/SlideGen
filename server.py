@@ -29,6 +29,8 @@ app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 allowed_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:5001",
+    "http://127.0.0.1:5001",
     os.environ.get('FRONTEND_URL', '')  # Add your production URL here
 ]
 # Remove empty strings
@@ -323,11 +325,50 @@ CORRECTED NOTES:"""
 
         corrected = call_anthropic(prompt, max_tokens=max_tokens)
         return corrected.strip()
-    
+
     except Exception as e:
         logger.error(f"Error proofreading notes: {str(e)}")
         # Return original if proofreading fails
         return notes_text
+
+def proofread_slide_text(slide_text, max_tokens=500):
+    """
+    Proofread slide text (titles and bullet points) for grammar and clarity.
+    Returns grammatically corrected version optimized for slides.
+    """
+    try:
+        prompt = f"""You are a professional editor proofreading slide text for a presentation.
+
+ORIGINAL SLIDE TEXT:
+{slide_text}
+
+TASK: Thoroughly proofread and correct this slide text to ensure it is grammatically perfect, clear, and concise.
+
+FIX ALL OF THE FOLLOWING:
+1. **Grammar errors** - Subject-verb agreement, tense consistency, pronoun usage, etc.
+2. **Spelling mistakes** - Any typos or misspelled words
+3. **Punctuation errors** - Commas, periods, semicolons, apostrophes, quotation marks
+4. **Sentence structure** - Run-on sentences, fragments, awkward constructions
+5. **Word choice** - Replace awkward or unclear wording with better, more concise alternatives
+6. **Clarity issues** - Make sure the text is clear and easy to understand at a glance
+
+MAINTAIN:
+- The same general length and brevity (slide text should be concise)
+- The core meaning and information
+- Professional tone appropriate for presentations
+- Bullet point or phrase structure (don't turn it into full sentences if it wasn't)
+
+OUTPUT: Return ONLY the corrected text with no explanations, comments, or labels. Keep it concise and slide-appropriate.
+
+CORRECTED TEXT:"""
+
+        corrected = call_anthropic(prompt, max_tokens=max_tokens)
+        return corrected.strip()
+
+    except Exception as e:
+        logger.error(f"Error proofreading slide text: {str(e)}")
+        # Return original if proofreading fails
+        return slide_text
 
 # ============= Authentication Endpoints =============
 
@@ -1003,19 +1044,19 @@ Speaker notes:"""
 
 @app.route('/api/presentations/complete', methods=['POST'])
 def complete_presentation():
-    """Mark presentation as complete and increment generation count"""
+    """Mark presentation as complete - generation count will be incremented on successful download"""
     try:
         user_id = session.get('user_id', 'anonymous')
         data = request.json
-        
+
         title = data.get('title', 'Untitled')
         topic = data.get('topic', '')
         num_slides = data.get('num_slides', 10)
         theme = data.get('theme', 'Default')
-        
-        # Increment generation count
-        increment_generation_count(user_id)
-        
+
+        # NOTE: Generation count is NOT incremented here anymore
+        # It will be incremented only when the PowerPoint file is successfully generated
+
         # Save presentation record
         conn = get_db()
         cursor = conn.cursor()
@@ -1026,14 +1067,14 @@ def complete_presentation():
         presentation_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        
-        logger.info(f"User {user_id} completed presentation: {title}")
+
+        logger.info(f"User {user_id} completed presentation research: {title}")
         return jsonify({
-            'success': True, 
+            'success': True,
             'message': 'Presentation generated successfully!',
             'presentation_id': presentation_id
         })
-    
+
     except Exception as e:
         logger.error(f"Complete presentation error: {str(e)}")
         return jsonify({'error': str(e)}), 500
@@ -1124,6 +1165,12 @@ Speaker notes:"""
                 slide_format=slide_format,  # Pass slide format
                 filename=tmp.name
             )
+
+            # Increment generation count ONLY after successful generation
+            user_id = session.get('user_id', 'anonymous')
+            if user_id != 'anonymous':
+                increment_generation_count(user_id)
+                logger.info(f"User {user_id} successfully generated presentation: {title}")
 
             # Send file
             return send_file(
