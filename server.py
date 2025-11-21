@@ -558,8 +558,8 @@ def create_checkout_session():
             cancel_url=request.host_url + 'payment-cancelled',
             metadata={'user_id': user_id}
         )
-        
-        return jsonify({'sessionId': checkout_session.id})
+
+        return jsonify({'url': checkout_session.url, 'sessionId': checkout_session.id})
     
     except Exception as e:
         logger.error(f"Checkout session error: {str(e)}")
