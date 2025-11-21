@@ -1,5 +1,5 @@
 """
-PowerPoint Theme Generator for SlideGen Pro
+PowerPoint Theme Generator for PresPilot
 
 Features:
 - AI-generated custom themes from user prompts

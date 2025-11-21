@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SlideGen Pro - Backend Server with Authentication & Subscriptions
+PresPilot - Backend Server with Authentication & Subscriptions
 PAYMENT REQUIRED - No free tier, users must subscribe to generate presentations.
 """
 
@@ -64,7 +64,7 @@ else:
 
 # SendGrid configuration
 SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
-SENDGRID_FROM_EMAIL = os.environ.get('SENDGRID_FROM_EMAIL', 'noreply@slidegenpro.com')
+SENDGRID_FROM_EMAIL = os.environ.get('SENDGRID_FROM_EMAIL', 'noreply@prespilot.com')
 
 if not SENDGRID_API_KEY:
     logger.warning("⚠️  SENDGRID_API_KEY not configured - email features disabled")
@@ -179,10 +179,10 @@ def send_confirmation_email(to_email, confirmation_token):
         message = Mail(
             from_email=Email(SENDGRID_FROM_EMAIL),
             to_emails=To(to_email),
-            subject='Confirm Your SlideGen Pro Account',
+            subject='Confirm Your PresPilot Account',
             html_content=f'''
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #f59e0b;">Welcome to SlideGen Pro!</h2>
+                <h2 style="color: #f59e0b;">Welcome to PresPilot!</h2>
                 <p>Thank you for subscribing. Please confirm your email and create your password to get started.</p>
                 <p><a href="{confirmation_url}" style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Confirm Email & Create Password</a></p>
                 <p style="color: #666; font-size: 14px;">This link will expire in 24 hours.</p>
