@@ -59,8 +59,8 @@ class ThemeGenerator:
             "text_color": RGBColor(50, 50, 50),
             "accent_color": RGBColor(220, 20, 60),
             "background": RGBColor(255, 255, 255),
-            "font": "Calibri",
-            "title_font": "Calibri Light",
+            "font": "Impact",
+            "title_font": "Impact",
             "layouts": ["left", "right", "top", "bottom"]
         },
         "Nature Green": {
@@ -689,59 +689,62 @@ class ThemeGenerator:
             deco_box.line.fill.background()
 
         elif self.theme_name == "Simplistic Red and White":
-            # White background
+            # Beige/Light gray background
             bg = slide.shapes.add_shape(
                 MSO_SHAPE.RECTANGLE, 0, 0,
                 self.prs.slide_width, self.prs.slide_height
             )
             bg.fill.solid()
-            bg.fill.fore_color.rgb = RGBColor(255, 255, 255)
+            bg.fill.fore_color.rgb = RGBColor(240, 240, 235)  # Light beige
             bg.line.fill.background()
 
-            # Title - red, centered at top
+            # Large diagonal red triangle from bottom-right
+            triangle = slide.shapes.add_shape(
+                MSO_SHAPE.RIGHT_TRIANGLE,
+                Inches(6.5), Inches(3),
+                Inches(4), Inches(4.5)
+            )
+            triangle.fill.solid()
+            triangle.fill.fore_color.rgb = RGBColor(180, 30, 50)  # Dark red
+            triangle.line.fill.background()
+            triangle.rotation = 135  # Rotate to create diagonal effect
+
+            # Title - large, red, on LEFT side
             title_box = slide.shapes.add_textbox(
-                Inches(1), Inches(0.8), Inches(8), Inches(1)
+                Inches(0.5), Inches(2), Inches(5.5), Inches(2)
             )
             tf = title_box.text_frame
             tf.word_wrap = True
             p = tf.paragraphs[0]
             p.text = title
             p.font.name = self.theme["title_font"]
-            p.font.size = Pt(64)
+            p.font.size = Pt(72)
             p.font.bold = True
             p.font.color.rgb = self.theme["accent_color"]
-            p.alignment = PP_ALIGN.CENTER
+            p.alignment = PP_ALIGN.LEFT
 
-            # Red underline
-            line = slide.shapes.add_shape(
-                MSO_SHAPE.RECTANGLE,
-                Inches(0.4), Inches(2), Inches(9.2), Pt(4)
-            )
-            line.fill.solid()
-            line.fill.fore_color.rgb = self.theme["accent_color"]
-            line.line.fill.background()
-
-            # Beige center box with network diagram placeholder
-            center_box = slide.shapes.add_shape(
-                MSO_SHAPE.RECTANGLE,
-                Inches(2.5), Inches(2.8), Inches(5), Inches(3.5)
-            )
-            center_box.fill.solid()
-            center_box.fill.fore_color.rgb = RGBColor(245, 235, 220)  # Beige
-            center_box.line.fill.background()
-
-            # Presenter name - red, bottom-left corner
+            # Presenter subtitle - smaller, red, below title
             by_box = slide.shapes.add_textbox(
-                Inches(0.4), Inches(6.8), Inches(4), Inches(0.5)
+                Inches(0.5), Inches(4), Inches(5.5), Inches(0.6)
             )
             tf = by_box.text_frame
             p = tf.paragraphs[0]
-            p.text = f"[{presenter_name}]"
+            p.text = f"Presented by {presenter_name}"
             p.font.name = self.theme["font"]
-            p.font.size = Pt(20)
-            p.font.italic = True
+            p.font.size = Pt(28)
+            p.font.bold = True
             p.font.color.rgb = self.theme["accent_color"]
             p.alignment = PP_ALIGN.LEFT
+
+            # Image placeholder box on RIGHT side
+            img_box = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE,
+                Inches(7), Inches(1), Inches(3), Inches(5.5)
+            )
+            img_box.fill.solid()
+            img_box.fill.fore_color.rgb = RGBColor(250, 250, 250)  # Light gray
+            img_box.line.color.rgb = RGBColor(100, 100, 100)  # Gray border
+            img_box.line.width = Pt(2)
 
         elif self.theme_name == "Minimalist Gray":
             # Light gray background
@@ -1101,76 +1104,85 @@ class ThemeGenerator:
             y_pos += 1.3
 
     def _add_simplistic_red_content(self, slide, title, bullets):
-        """Simplistic Red and White theme: Split layout with decorative elements"""
+        """Simplistic Red and White theme: Image left, bullets right, diagonal triangle bottom"""
         # AI Grammar check for Simplistic Red and White theme
         title = proofread_slide_text(title)
         bullets = [proofread_slide_text(bullet) for bullet in bullets]
 
-        # White background
+        # Light beige background
         bg = slide.shapes.add_shape(
             MSO_SHAPE.RECTANGLE, 0, 0,
             self.prs.slide_width, self.prs.slide_height
         )
         bg.fill.solid()
-        bg.fill.fore_color.rgb = RGBColor(255, 255, 255)
+        bg.fill.fore_color.rgb = RGBColor(240, 240, 235)  # Light beige
         bg.line.fill.background()
 
-        # Red italic title with underline
+        # Large diagonal red triangle at bottom (left to right)
+        triangle = slide.shapes.add_shape(
+            MSO_SHAPE.RIGHT_TRIANGLE,
+            Inches(0), Inches(4.5),
+            Inches(10), Inches(3)
+        )
+        triangle.fill.solid()
+        triangle.fill.fore_color.rgb = RGBColor(180, 30, 50)  # Dark red
+        triangle.line.fill.background()
+        triangle.rotation = 0  # Horizontal orientation
+
+        # Title - large, red, centered at TOP
         title_box = slide.shapes.add_textbox(
-            Inches(0.5), Inches(0.5), Inches(5), Inches(0.8)
+            Inches(1), Inches(0.3), Inches(8), Inches(1)
         )
         tf = title_box.text_frame
+        tf.word_wrap = True
         p = tf.paragraphs[0]
         p.text = title
         p.font.name = self.theme["title_font"]
-        p.font.size = Pt(48)
-        p.font.italic = True
+        p.font.size = Pt(60)
+        p.font.bold = True
         p.font.color.rgb = self.theme["accent_color"]
-        p.alignment = PP_ALIGN.LEFT
+        p.alignment = PP_ALIGN.CENTER
 
-        # Red underline
-        line = slide.shapes.add_shape(
+        # Image placeholder on LEFT side
+        img_placeholder = slide.shapes.add_shape(
             MSO_SHAPE.RECTANGLE,
-            Inches(0.5), Inches(1.35), Inches(5.5), Pt(3)
+            Inches(0.5), Inches(1.8), Inches(4), Inches(3.5)
         )
-        line.fill.solid()
-        line.fill.fore_color.rgb = self.theme["accent_color"]
-        line.line.fill.background()
+        img_placeholder.fill.solid()
+        img_placeholder.fill.fore_color.rgb = RGBColor(250, 250, 250)  # Light gray
+        img_placeholder.line.color.rgb = RGBColor(100, 100, 100)  # Gray border
+        img_placeholder.line.width = Pt(2)
 
-        # Red bullet points on left
-        y_pos = 2.2
-        for i, bullet in enumerate(bullets[:3]):
+        # Red bullet points on RIGHT side
+        y_pos = 2
+        for i, bullet in enumerate(bullets[:4]):
+            # Red bullet marker (dash)
+            marker_box = slide.shapes.add_textbox(
+                Inches(5.2), Inches(y_pos), Inches(0.3), Inches(0.4)
+            )
+            tf = marker_box.text_frame
+            p = tf.paragraphs[0]
+            p.text = "-"
+            p.font.name = self.theme["font"]
+            p.font.size = Pt(40)
+            p.font.bold = True
+            p.font.color.rgb = self.theme["accent_color"]
+            p.alignment = PP_ALIGN.CENTER
+
+            # Bullet text
             bullet_box = slide.shapes.add_textbox(
-                Inches(0.8), Inches(y_pos), Inches(4.5), Inches(0.8)
+                Inches(5.8), Inches(y_pos), Inches(4), Inches(0.8)
             )
             tf = bullet_box.text_frame
             tf.word_wrap = True
             p = tf.paragraphs[0]
-            p.text = f"• {bullet}"
+            p.text = bullet
             p.font.name = self.theme["font"]
-            p.font.size = Pt(26)
+            p.font.size = Pt(28)
             p.font.bold = True
             p.font.color.rgb = self.theme["accent_color"]
             p.alignment = PP_ALIGN.LEFT
-            y_pos += 1.2
-
-        # Large image placeholder on right
-        img_placeholder = slide.shapes.add_shape(
-            MSO_SHAPE.RECTANGLE,
-            Inches(5.8), Inches(0.5), Inches(3.8), Inches(5)
-        )
-        img_placeholder.fill.solid()
-        img_placeholder.fill.fore_color.rgb = RGBColor(220, 220, 220)
-        img_placeholder.line.fill.background()
-
-        # Decorative red sunburst bottom-left
-        sunburst = slide.shapes.add_shape(
-            MSO_SHAPE.RECTANGLE,  # Simplified as rectangle
-            Inches(0.5), Inches(5.8), Inches(1.2), Inches(0.8)
-        )
-        sunburst.fill.solid()
-        sunburst.fill.fore_color.rgb = self.theme["accent_color"]
-        sunburst.line.fill.background()
+            y_pos += 0.9
 
     def _add_business_black_content(self, slide, title, bullets):
         """Business Black and Yellow theme: Yellow title bar with clean layout"""
