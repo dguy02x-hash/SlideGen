@@ -15,6 +15,7 @@ from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
+import os
 
 # Import grammar checking function from server
 try:
@@ -34,14 +35,14 @@ class ThemeGenerator:
     
     THEMES = {
         "Business Black and Yellow": {
-            "primary_color": RGBColor(255, 215, 0),
+            "primary_color": RGBColor(255, 200, 0),  # Golden yellow
             "secondary_color": RGBColor(0, 0, 0),
             "text_color": RGBColor(255, 255, 255),
-            "accent_color": RGBColor(255, 215, 0),
+            "accent_color": RGBColor(255, 200, 0),  # Golden yellow
             "background": RGBColor(0, 0, 0),
-            "font": "Impact",
-            "title_font": "Impact",
-            "layouts": ["right", "left", "top", "bottom"]  # Cycles through these
+            "font": "Roboto Black",
+            "title_font": "Roboto Black",
+            "layouts": ["right", "center"]  # Right = image on right, center = centered bullets only
         },
         "Autumn Brown and Orange": {
             "primary_color": RGBColor(210, 105, 30),
@@ -142,6 +143,7 @@ class ThemeGenerator:
         self.prs.slide_width = Inches(10)
         self.prs.slide_height = Inches(7.5)
         self.slide_count = 0
+        self.layout_index = 0  # Track current layout for alternating layouts
 
         # No template files - always use programmatic generation
         self.template_path = None
@@ -460,6 +462,22 @@ class ThemeGenerator:
                         except:
                             pass
 
+    def _add_background_image(self, slide, image_filename):
+        """Add a background image from theme-templates folder"""
+        template_dir = "theme-templates"
+        image_path = os.path.join(template_dir, image_filename)
+
+        if os.path.exists(image_path):
+            # Add image as background - fills entire slide
+            slide.shapes.add_picture(
+                image_path,
+                0, 0,
+                width=self.prs.slide_width,
+                height=self.prs.slide_height
+            )
+        else:
+            print(f"Warning: Background image not found: {image_path}")
+
     def _convert_custom_style(self, custom_style):
         """Convert AI-generated style config to internal theme format"""
         def hex_to_rgb(hex_color):
@@ -561,72 +579,34 @@ class ThemeGenerator:
             p.alignment = PP_ALIGN.CENTER
 
         elif self.theme_name == "Business Black and Yellow":
-            # Black background
-            bg = slide.shapes.add_shape(
-                MSO_SHAPE.RECTANGLE, 0, 0,
-                self.prs.slide_width, self.prs.slide_height
-            )
-            bg.fill.solid()
-            bg.fill.fore_color.rgb = RGBColor(0, 0, 0)
-            bg.line.fill.background()
+            # Load title background image
+            self._add_background_image(slide, "Business Black and Yellow Title Background.jpg")
 
-            # Diagonal divider (approximated as angled rectangle)
-            divider = slide.shapes.add_shape(
-                MSO_SHAPE.RECTANGLE,
-                Inches(7), 0, Inches(3), self.prs.slide_height
-            )
-            divider.fill.solid()
-            divider.fill.fore_color.rgb = RGBColor(220, 220, 220)
-            divider.line.fill.background()
-
-            # Yellow X decorative elements
-            for pos in [(0.5, 0.3), (6, 0.6), (1, 5.5), (3.5, 6)]:
-                x_shape = slide.shapes.add_shape(
-                    MSO_SHAPE.CROSS,
-                    Inches(pos[0]), Inches(pos[1]), Inches(0.3), Inches(0.3)
-                )
-                x_shape.fill.solid()
-                x_shape.fill.fore_color.rgb = self.theme["accent_color"]
-                x_shape.line.fill.background()
-
-            # Title - white, left-aligned, upper-left
+            # Title - white, centered
             title_box = slide.shapes.add_textbox(
-                Inches(0.5), Inches(1.5), Inches(6), Inches(3)
+                Inches(1), Inches(2.5), Inches(8), Inches(1.5)
             )
             tf = title_box.text_frame
             tf.word_wrap = True
             p = tf.paragraphs[0]
-            p.text = title.upper()
+            p.text = title
             p.font.name = self.theme["title_font"]
-            p.font.size = Pt(60)
+            p.font.size = Pt(72)
             p.font.bold = True
             p.font.color.rgb = RGBColor(255, 255, 255)
-            p.alignment = PP_ALIGN.LEFT
+            p.alignment = PP_ALIGN.CENTER
 
-            # Subtitle - yellow, left-aligned below title
+            # Subtitle - white, centered below title
             by_box = slide.shapes.add_textbox(
-                Inches(0.5), Inches(4.5), Inches(5), Inches(0.8)
+                Inches(1), Inches(4.2), Inches(8), Inches(0.7)
             )
             tf = by_box.text_frame
             p = tf.paragraphs[0]
-            p.text = f"BY {presenter_name.upper()}"
+            p.text = f"Presented by {presenter_name}"
             p.font.name = self.theme["font"]
             p.font.size = Pt(32)
             p.font.bold = True
-            p.font.color.rgb = self.theme["accent_color"]
-            p.alignment = PP_ALIGN.LEFT
-
-            # "INSERT IMAGE" text on right side
-            img_text = slide.shapes.add_textbox(
-                Inches(7.5), Inches(2.5), Inches(2), Inches(1)
-            )
-            tf = img_text.text_frame
-            p = tf.paragraphs[0]
-            p.text = "INSERT\nIMAGE"
-            p.font.name = "Arial"
-            p.font.size = Pt(24)
-            p.font.bold = True
-            p.font.color.rgb = RGBColor(100, 100, 100)
+            p.font.color.rgb = RGBColor(255, 255, 255)
             p.alignment = PP_ALIGN.CENTER
 
         elif self.theme_name == "Ocean Blue":
@@ -1203,65 +1183,107 @@ class ThemeGenerator:
             y_pos += 0.9
 
     def _add_business_black_content(self, slide, title, bullets):
-        """Business Black and Yellow theme: Yellow title bar with clean layout"""
-        # Black background
-        bg = slide.shapes.add_shape(
-            MSO_SHAPE.RECTANGLE, 0, 0,
-            self.prs.slide_width, self.prs.slide_height
-        )
-        bg.fill.solid()
-        bg.fill.fore_color.rgb = self.theme["background"]
-        bg.line.fill.background()
+        """Business Black and Yellow theme: Two layouts - right (with image) and center (no image)"""
+        # Get current layout (cycles between 'right' and 'center')
+        layout_type = self.theme["layouts"][self.layout_index % len(self.theme["layouts"])]
 
-        # Yellow title bar at top
-        title_bar = slide.shapes.add_shape(
-            MSO_SHAPE.RECTANGLE,
-            0, 0, self.prs.slide_width, Inches(1.2)
-        )
-        title_bar.fill.solid()
-        title_bar.fill.fore_color.rgb = self.theme["primary_color"]
-        title_bar.line.fill.background()
+        # Load appropriate background image based on layout type
+        if layout_type == "right":
+            self._add_background_image(slide, "Business Black and Yellow Body 1 Background.jpg")
+        else:  # center
+            self._add_background_image(slide, "Business Black and Yellow Body 2 Background.jpg")
 
-        # Title in yellow bar
-        title_box = slide.shapes.add_textbox(
-            Inches(0.5), Inches(0.2), Inches(9), Inches(0.8)
-        )
-        tf = title_box.text_frame
-        tf.word_wrap = True
-        p = tf.paragraphs[0]
-        p.text = title.upper()
-        p.font.name = self.theme["title_font"]
-        p.font.size = Pt(36)
-        p.font.bold = True
-        p.font.color.rgb = RGBColor(0, 0, 0)
-        p.alignment = PP_ALIGN.LEFT
+        if layout_type == "right":
+            # Body 1 layout: Title top-left, bullets on left, image on right
 
-        # White bullet points
-        y_pos = 2
-        for i, bullet in enumerate(bullets[:5]):
-            bullet_box = slide.shapes.add_textbox(
-                Inches(1), Inches(y_pos), Inches(8), Inches(0.7)
+            # Title - white, top-left
+            title_box = slide.shapes.add_textbox(
+                Inches(0.5), Inches(0.5), Inches(5), Inches(0.8)
             )
-            tf = bullet_box.text_frame
+            tf = title_box.text_frame
             tf.word_wrap = True
             p = tf.paragraphs[0]
-            p.text = f"• {bullet}"
-            p.font.name = self.theme["font"]
-            p.font.size = Pt(22)
+            p.text = title
+            p.font.name = self.theme["title_font"]
+            p.font.size = Pt(48)
+            p.font.bold = True
             p.font.color.rgb = RGBColor(255, 255, 255)
             p.alignment = PP_ALIGN.LEFT
-            y_pos += 0.9
 
-        # Yellow X decorations in corners (simplified)
-        for x_pos, y_pos in [(Inches(0.3), Inches(6.5)), (Inches(9.2), Inches(6.5))]:
-            x_mark = slide.shapes.add_textbox(x_pos, y_pos, Inches(0.5), Inches(0.5))
-            tf = x_mark.text_frame
+            # White bullet points on left
+            y_pos = 2
+            for i, bullet in enumerate(bullets[:3]):  # Only 3 bullets for this layout
+                bullet_box = slide.shapes.add_textbox(
+                    Inches(0.8), Inches(y_pos), Inches(5), Inches(0.8)
+                )
+                tf = bullet_box.text_frame
+                tf.word_wrap = True
+                p = tf.paragraphs[0]
+                p.text = f"- {bullet}"
+                p.font.name = self.theme["font"]
+                p.font.size = Pt(26)
+                p.font.bold = True
+                p.font.color.rgb = RGBColor(255, 255, 255)
+                p.alignment = PP_ALIGN.LEFT
+                y_pos += 1.2
+
+            # Image placeholder on right
+            img_box = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE,
+                Inches(6.5), Inches(1.8), Inches(3), Inches(3)
+            )
+            img_box.fill.solid()
+            img_box.fill.fore_color.rgb = RGBColor(220, 220, 220)
+            img_box.line.fill.background()
+
+            # "INPUT IMAGE" text on placeholder
+            img_text = slide.shapes.add_textbox(
+                Inches(6.5), Inches(2.8), Inches(3), Inches(1)
+            )
+            tf = img_text.text_frame
             p = tf.paragraphs[0]
-            p.text = "X"
-            p.font.name = self.theme["font"]
-            p.font.size = Pt(32)
+            p.text = "INPUT\nIMAGE"
+            p.font.name = "Arial"
+            p.font.size = Pt(24)
+            p.font.color.rgb = RGBColor(100, 100, 100)
+            p.alignment = PP_ALIGN.CENTER
+
+        else:  # center layout
+            # Body 2 layout: Title centered at top, bullets centered
+
+            # Title - white, centered at top
+            title_box = slide.shapes.add_textbox(
+                Inches(1), Inches(0.8), Inches(8), Inches(0.8)
+            )
+            tf = title_box.text_frame
+            tf.word_wrap = True
+            p = tf.paragraphs[0]
+            p.text = title
+            p.font.name = self.theme["title_font"]
+            p.font.size = Pt(52)
             p.font.bold = True
-            p.font.color.rgb = self.theme["primary_color"]
+            p.font.color.rgb = RGBColor(255, 255, 255)
+            p.alignment = PP_ALIGN.CENTER
+
+            # White bullet points centered
+            y_pos = 2.2
+            for i, bullet in enumerate(bullets[:4]):  # Up to 4 bullets for this layout
+                bullet_box = slide.shapes.add_textbox(
+                    Inches(2.5), Inches(y_pos), Inches(5), Inches(0.8)
+                )
+                tf = bullet_box.text_frame
+                tf.word_wrap = True
+                p = tf.paragraphs[0]
+                p.text = f"- {bullet}"
+                p.font.name = self.theme["font"]
+                p.font.size = Pt(26)
+                p.font.bold = True
+                p.font.color.rgb = RGBColor(255, 255, 255)
+                p.alignment = PP_ALIGN.CENTER
+                y_pos += 1.1
+
+        # Increment layout index for next slide
+        self.layout_index += 1
 
     def _add_default_content(self, slide, title, bullets):
         """Fallback default layout for themes without specific layouts"""
@@ -1320,21 +1342,31 @@ class ThemeGenerator:
         """Add thank you slide - programmatically generated based on theme"""
         slide = self.prs.slides.add_slide(self.prs.slide_layouts[6])
 
-        # Background - gradient for Sunset Orange, solid for others
-        bg = slide.shapes.add_shape(
-            MSO_SHAPE.RECTANGLE, 0, 0,
-            self.prs.slide_width, self.prs.slide_height
-        )
+        # Background - use background images for specific themes
         if self.theme_name == "Sunset Orange":
+            # Gradient for Sunset Orange
+            bg = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE, 0, 0,
+                self.prs.slide_width, self.prs.slide_height
+            )
             bg.fill.gradient()
             bg.fill.gradient_angle = 90.0  # Vertical gradient
             # Orange to grey gradient
             bg.fill.gradient_stops[0].color.rgb = RGBColor(255, 140, 0)  # Orange
             bg.fill.gradient_stops[1].color.rgb = RGBColor(160, 160, 160)  # Grey
+            bg.line.fill.background()
+        elif self.theme_name == "Business Black and Yellow":
+            # Load title background image (same as title slide)
+            self._add_background_image(slide, "Business Black and Yellow Title Background.jpg")
         else:
+            # Solid background for other themes
+            bg = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE, 0, 0,
+                self.prs.slide_width, self.prs.slide_height
+            )
             bg.fill.solid()
             bg.fill.fore_color.rgb = self.theme["background"]
-        bg.line.fill.background()
+            bg.line.fill.background()
 
         # "Thank You" text - centered
         thank_you_box = slide.shapes.add_textbox(
