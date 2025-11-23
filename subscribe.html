@@ -208,7 +208,7 @@
         </div>
 
         <div class="back-link">
-            <a href="/">← Back to Home</a>
+            <a href="/" onclick="navigateHome(); return false;">← Back to Home</a>
         </div>
     </div>
 
@@ -216,6 +216,10 @@
         const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? 'http://localhost:5001'
             : window.location.origin;
+
+        function navigateHome() {
+            window.location.href = '/';
+        }
 
         document.getElementById('subscribe-btn').addEventListener('click', async () => {
             const btn = document.getElementById('subscribe-btn');
