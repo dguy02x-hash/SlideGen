@@ -630,6 +630,7 @@
 
                 <button type="submit" class="btn btn-primary">Next</button>
                 <button type="button" class="btn btn-secondary" onclick="logout()">Logout</button>
+                <button type="button" id="cancel-subscription-btn" class="btn" style="display: none; margin-top: 10px; background: #dc3545; color: white;" onclick="cancelSubscription()">Cancel Subscription</button>
             </form>
         </div>
     </div>
@@ -953,9 +954,17 @@
             if (currentUser) {
                 const remaining = currentUser.generations_limit - currentUser.generations_used;
                 document.querySelector('.generations-counter .count').textContent = remaining;
-                
+
                 if (currentUser.subscription_status === 'free' && remaining === 0) {
                     document.getElementById('upgrade-banner').style.display = 'block';
+                }
+
+                // Show cancel button only for active/premium subscribers
+                const cancelBtn = document.getElementById('cancel-subscription-btn');
+                if (cancelBtn && (currentUser.subscription_status === 'active' || currentUser.subscription_status === 'premium')) {
+                    cancelBtn.style.display = 'block';
+                } else if (cancelBtn) {
+                    cancelBtn.style.display = 'none';
                 }
             }
         }
@@ -982,6 +991,46 @@
             } catch (error) {
                 console.error('Checkout error:', error);
                 showErrorModal('Failed to start checkout. Please try again.');
+            }
+        }
+
+        async function cancelSubscription() {
+            // Show confirmation dialog
+            if (!confirm('Are you sure you want to cancel your subscription? You will keep access until the end of your current billing period.')) {
+                return;
+            }
+
+            const cancelBtn = document.getElementById('cancel-subscription-btn');
+            const originalText = cancelBtn.textContent;
+
+            try {
+                cancelBtn.disabled = true;
+                cancelBtn.textContent = 'Canceling...';
+
+                const response = await fetch(`${API_URL}/api/payment/cancel-subscription`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccessModal(data.message || 'Subscription canceled successfully');
+                    // Hide the cancel button after successful cancellation
+                    cancelBtn.style.display = 'none';
+                } else {
+                    showErrorModal(data.error || 'Failed to cancel subscription');
+                    cancelBtn.disabled = false;
+                    cancelBtn.textContent = originalText;
+                }
+            } catch (error) {
+                console.error('Cancel subscription error:', error);
+                showErrorModal('Failed to cancel subscription. Please try again.');
+                cancelBtn.disabled = false;
+                cancelBtn.textContent = originalText;
             }
         }
 
@@ -1319,13 +1368,13 @@
 
             // Create an AbortController for timeout
             const controller = new AbortController();
-            const timeout = 300000; // 5 minutes for detailed speaker notes
+            const timeout = 600000; // 10 minutes for detailed speaker notes with document upload
             const timeoutId = setTimeout(() => {
                 console.error('Request timeout - aborting fetch');
                 controller.abort();
             }, timeout);
 
-            console.log('Starting fetch request with 5 minute timeout...');
+            console.log('Starting fetch request with 10 minute timeout...');
             fetch(`${API_URL}/api/presentations/generate-pptx`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

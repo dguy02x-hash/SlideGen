@@ -916,36 +916,34 @@ def stripe_webhook():
 @app.route('/api/payment/cancel-subscription', methods=['POST'])
 @login_required
 def cancel_subscription():
-    """Cancel user's subscription"""
+    """Cancel user's subscription at the end of billing period"""
     try:
         user_id = session['user_id']
-        
+
         conn = get_db()
         cursor = conn.cursor()
         user = cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
         conn.close()
-        
+
         if not user or not user['stripe_subscription_id']:
             return jsonify({'error': 'No active subscription'}), 400
-        
-        # Cancel in Stripe
-        stripe.Subscription.delete(user['stripe_subscription_id'])
-        
-        # Update database to inactive (no free tier)
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute('''
-            UPDATE users 
-            SET subscription_status = 'inactive',
-                generations_limit = 0,
-                stripe_subscription_id = NULL
-            WHERE id = ?
-        ''', (user_id,))
-        conn.commit()
-        conn.close()
-        
-        return jsonify({'success': True, 'message': 'Subscription cancelled. Resubscribe anytime to continue creating presentations.'})
-    
+
+        # Cancel subscription at period end (keeps access until end of paid month)
+        subscription = stripe.Subscription.modify(
+            user['stripe_subscription_id'],
+            cancel_at_period_end=True
+        )
+
+        # Get the cancellation date
+        cancel_date = datetime.fromtimestamp(subscription.current_period_end).strftime('%B %d, %Y')
+
+        logger.info(f"Subscription {subscription.id} will cancel on {cancel_date}")
+
+        return jsonify({
+            'success': True,
+            'message': f'Your subscription will remain active until {cancel_date}. You can still create presentations until then.'
+        })
+
     except Exception as e:
         logger.error(f"Cancel subscription error: {str(e)}")
         return jsonify({'error': str(e)}), 500
