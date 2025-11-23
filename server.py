@@ -150,6 +150,18 @@ def init_db():
         )
     ''')
 
+    # Password reset tokens table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            token TEXT UNIQUE NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
     conn.commit()
     conn.close()
     logger.info("Database initialized successfully")
@@ -167,37 +179,43 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-def send_confirmation_email(to_email, confirmation_token):
-    """Send email confirmation with token link"""
+def send_email(to_email, subject, html_content):
+    """Generic helper function to send emails via SendGrid"""
     if not SENDGRID_API_KEY:
         logger.error("SendGrid not configured - cannot send email")
         return False
 
     try:
-        confirmation_url = f"{request.host_url}confirm-email.html?token={confirmation_token}"
-
         message = Mail(
             from_email=Email(SENDGRID_FROM_EMAIL),
             to_emails=To(to_email),
-            subject='Confirm Your PresPilot Account',
-            html_content=f'''
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #f59e0b;">Welcome to PresPilot!</h2>
-                <p>Thank you for subscribing. Please confirm your email and create your password to get started.</p>
-                <p><a href="{confirmation_url}" style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Confirm Email & Create Password</a></p>
-                <p style="color: #666; font-size: 14px;">This link will expire in 24 hours.</p>
-                <p style="color: #666; font-size: 14px;">If you didn't request this, please ignore this email.</p>
-            </div>
-            '''
+            subject=subject,
+            html_content=html_content
         )
 
         sg = SendGridAPIClient(SENDGRID_API_KEY)
         response = sg.send(message)
-        logger.info(f"Confirmation email sent to {to_email}")
+        logger.info(f"Email sent to {to_email}: {subject}")
         return True
     except Exception as e:
         logger.error(f"Failed to send email to {to_email}: {str(e)}")
         return False
+
+def send_confirmation_email(to_email, confirmation_token):
+    """Send email confirmation with token link"""
+    confirmation_url = f"{request.host_url}confirm-email.html?token={confirmation_token}"
+
+    html_content = f'''
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #f59e0b;">Welcome to PresPilot!</h2>
+        <p>Thank you for subscribing. Please confirm your email and create your password to get started.</p>
+        <p><a href="{confirmation_url}" style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Confirm Email & Create Password</a></p>
+        <p style="color: #666; font-size: 14px;">This link will expire in 24 hours.</p>
+        <p style="color: #666; font-size: 14px;">If you didn't request this, please ignore this email.</p>
+    </div>
+    '''
+
+    return send_email(to_email, 'Confirm Your PresPilot Account', html_content)
 
 def login_required(f):
     """Decorator to require login for endpoints"""
@@ -565,6 +583,138 @@ def auth_status():
 def auth_me():
     """Alias for auth_status - for frontend compatibility"""
     return auth_status()
+
+@app.route('/api/auth/forgot-password', methods=['POST'])
+def forgot_password():
+    """Request password reset - generates token and sends email"""
+    try:
+        data = request.json
+        email = data.get('email', '').strip().lower()
+
+        if not email:
+            return jsonify({'error': 'Email is required'}), 400
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Check if user exists
+        user = cursor.execute('SELECT id, email FROM users WHERE email = ?', (email,)).fetchone()
+
+        # Always return success message to prevent email enumeration
+        if not user:
+            conn.close()
+            logger.info(f"Password reset requested for non-existent email: {email}")
+            return jsonify({
+                'success': True,
+                'message': 'If that email exists in our system, a password reset link has been sent.'
+            })
+
+        # Generate secure token
+        reset_token = secrets.token_urlsafe(32)
+        expires_at = datetime.utcnow() + timedelta(hours=1)
+
+        # Delete any existing reset tokens for this user
+        cursor.execute('DELETE FROM password_reset_tokens WHERE user_id = ?', (user['id'],))
+
+        # Store new reset token
+        cursor.execute('''
+            INSERT INTO password_reset_tokens (user_id, token, expires_at)
+            VALUES (?, ?, ?)
+        ''', (user['id'], reset_token, expires_at.isoformat()))
+
+        conn.commit()
+        conn.close()
+
+        # Send password reset email
+        reset_url = f"{request.host_url}reset-password.html?token={reset_token}"
+
+        html_content = f'''
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #f59e0b;">Password Reset Request</h2>
+            <p>We received a request to reset your password for your PresPilot account.</p>
+            <p>Click the button below to reset your password:</p>
+            <p><a href="{reset_url}" style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Reset Password</a></p>
+            <p style="color: #666; font-size: 14px;">This link will expire in 1 hour.</p>
+            <p style="color: #666; font-size: 14px;">If you didn't request this password reset, you can safely ignore this email. Your password will not be changed.</p>
+        </div>
+        '''
+
+        email_sent = send_email(email, 'Reset Your PresPilot Password', html_content)
+
+        if email_sent:
+            logger.info(f"Password reset email sent to {email}")
+        else:
+            logger.error(f"Failed to send password reset email to {email}")
+
+        return jsonify({
+            'success': True,
+            'message': 'If that email exists in our system, a password reset link has been sent.'
+        })
+
+    except Exception as e:
+        logger.error(f"Forgot password error: {str(e)}")
+        return jsonify({'error': 'Failed to process password reset request'}), 500
+
+@app.route('/api/auth/reset-password', methods=['POST'])
+def reset_password():
+    """Reset password using valid token"""
+    try:
+        data = request.json
+        token = data.get('token', '').strip()
+        new_password = data.get('new_password', '')
+
+        if not token or not new_password:
+            return jsonify({'error': 'Token and new password are required'}), 400
+
+        if len(new_password) < 6:
+            return jsonify({'error': 'Password must be at least 6 characters'}), 400
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Find valid token
+        reset_record = cursor.execute('''
+            SELECT * FROM password_reset_tokens
+            WHERE token = ?
+        ''', (token,)).fetchone()
+
+        if not reset_record:
+            conn.close()
+            return jsonify({'error': 'Invalid or expired reset token'}), 400
+
+        # Check if token is expired
+        expires_at = datetime.fromisoformat(reset_record['expires_at'])
+        if datetime.utcnow() > expires_at:
+            # Delete expired token
+            cursor.execute('DELETE FROM password_reset_tokens WHERE id = ?', (reset_record['id'],))
+            conn.commit()
+            conn.close()
+            return jsonify({'error': 'Reset token has expired. Please request a new one.'}), 400
+
+        # Update user password
+        new_password_hash = hash_password(new_password)
+        cursor.execute('''
+            UPDATE users
+            SET password_hash = ?
+            WHERE id = ?
+        ''', (new_password_hash, reset_record['user_id']))
+
+        # Delete used token
+        cursor.execute('DELETE FROM password_reset_tokens WHERE id = ?', (reset_record['id'],))
+
+        conn.commit()
+        conn.close()
+
+        logger.info(f"Password reset successful for user_id: {reset_record['user_id']}")
+
+        return jsonify({
+            'success': True,
+            'message': 'Password reset successfully! You can now sign in with your new password.'
+        })
+
+    except Exception as e:
+        logger.error(f"Reset password error: {str(e)}")
+        return jsonify({'error': 'Failed to reset password'}), 500
 
 @app.route('/api/auth/pending-subscription', methods=['GET'])
 def get_pending_subscription():
@@ -1478,6 +1628,11 @@ def payment_success():
 def payment_cancelled():
     """Serve payment cancelled page"""
     return send_from_directory('.', 'payment-cancelled.html')
+
+@app.route('/reset-password.html')
+def reset_password_page():
+    """Serve password reset page"""
+    return send_from_directory('.', 'reset-password.html')
 
 @app.route('/theme-previews/<path:filename>')
 def serve_theme_preview(filename):

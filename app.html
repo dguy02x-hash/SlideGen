@@ -502,7 +502,8 @@
                 
                 <button type="submit" class="btn btn-primary">Sign In</button>
             </form>
-            
+
+            <button class="link-button" onclick="showForgotPasswordModal()">Forgot Password?</button>
             <button class="link-button" onclick="showPage('signup-page')">Create Account</button>
         </div>
     </div>
@@ -813,6 +814,26 @@
         </div>
     </div>
 
+    <!-- Forgot Password Modal -->
+    <div id="forgot-password-modal" class="modal">
+        <div class="modal-content">
+            <h2>Reset Password</h2>
+            <p style="margin-bottom: 20px;">Enter your email address and we'll send you a link to reset your password.</p>
+
+            <div id="forgot-password-error" class="error-message"></div>
+            <div id="forgot-password-success" class="success-message"></div>
+
+            <form id="forgot-password-form">
+                <div class="input-group">
+                    <label for="forgot-password-email">Email Address</label>
+                    <input type="email" id="forgot-password-email" required placeholder="your@email.com">
+                </div>
+                <button type="submit" class="btn btn-primary" id="forgot-password-btn">Send Reset Link</button>
+                <button type="button" class="btn btn-secondary" onclick="closeForgotPasswordModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
     <script>
         // Configuration
         // Use window.location.origin for production, fallback to localhost for development
@@ -868,6 +889,74 @@
                 modal.classList.remove('active');
             });
         }
+
+        function showForgotPasswordModal() {
+            document.getElementById('forgot-password-modal').classList.add('active');
+            document.getElementById('forgot-password-email').value = '';
+            document.getElementById('forgot-password-error').classList.remove('active');
+            document.getElementById('forgot-password-success').classList.remove('active');
+        }
+
+        function closeForgotPasswordModal() {
+            document.getElementById('forgot-password-modal').classList.remove('active');
+        }
+
+        // Forgot password form handler
+        document.getElementById('forgot-password-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('forgot-password-email').value.trim();
+            const errorDiv = document.getElementById('forgot-password-error');
+            const successDiv = document.getElementById('forgot-password-success');
+            const submitBtn = document.getElementById('forgot-password-btn');
+
+            // Clear previous messages
+            errorDiv.classList.remove('active');
+            successDiv.classList.remove('active');
+
+            if (!email) {
+                errorDiv.textContent = 'Please enter your email address';
+                errorDiv.classList.add('active');
+                return;
+            }
+
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending...';
+
+            try {
+                const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    successDiv.textContent = data.message || 'If that email exists in our system, a password reset link has been sent.';
+                    successDiv.classList.add('active');
+
+                    // Clear the form
+                    document.getElementById('forgot-password-email').value = '';
+
+                    // Auto-close modal after 3 seconds
+                    setTimeout(() => {
+                        closeForgotPasswordModal();
+                    }, 3000);
+                } else {
+                    errorDiv.textContent = data.error || 'Failed to send reset email';
+                    errorDiv.classList.add('active');
+                }
+            } catch (error) {
+                console.error('Forgot password error:', error);
+                errorDiv.textContent = 'Connection error. Please try again.';
+                errorDiv.classList.add('active');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Send Reset Link';
+            }
+        });
 
         // Authentication functions
         document.getElementById('signin-form').addEventListener('submit', async (e) => {
