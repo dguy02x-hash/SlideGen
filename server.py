@@ -777,7 +777,7 @@ def verify_email():
             return jsonify({'error': 'Confirmation link has expired', 'valid': False}), 400
 
         # Check if email was already verified
-        if pending.get('email_verified'):
+        if pending['email_verified']:
             # If already verified but account not created yet, still allow password creation
             return jsonify({
                 'valid': True,
@@ -840,7 +840,7 @@ def complete_registration():
             return jsonify({'error': 'Confirmation link has expired'}), 400
 
         # Verify email was confirmed
-        if not pending.get('email_verified'):
+        if not pending['email_verified']:
             conn.close()
             return jsonify({'error': 'Email must be verified first'}), 400
 
