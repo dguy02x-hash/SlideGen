@@ -967,7 +967,7 @@ def create_checkout_session():
         logger.error(f"Checkout session error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/payment/webhook', methods=['POST'])
+@app.route('/api/payment/webhook', methods=['POST'], strict_slashes=False)
 def stripe_webhook():
     """Handle Stripe webhooks"""
     payload = request.data
