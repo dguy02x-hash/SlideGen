@@ -64,7 +64,7 @@ else:
 
 # SendGrid configuration
 SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
-SENDGRID_FROM_EMAIL = os.environ.get('SENDGRID_FROM_EMAIL', 'noreply@prespilot.com')
+SENDGRID_FROM_EMAIL = os.environ.get('SENDGRID_FROM_EMAIL', 'support@prespilot.com')
 
 if not SENDGRID_API_KEY:
     logger.warning("⚠️  SENDGRID_API_KEY not configured - email features disabled")
