@@ -775,6 +775,9 @@ def list_themes():
                         'previews': previews
                     })
 
+        # Sort themes with Film Flare first, then alphabetically
+        themes.sort(key=lambda x: (x['name'] != 'Film Flare', x['name']))
+
         return jsonify({'themes': themes})
     except Exception as e:
         logger.error(f"Error listing themes: {str(e)}")
