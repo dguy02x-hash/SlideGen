@@ -20,6 +20,7 @@ import stripe
 import time
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Email, To, Content
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Load environment variables from .env file
 load_dotenv()
