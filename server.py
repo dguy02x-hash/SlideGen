@@ -203,7 +203,9 @@ def send_email(to_email, subject, html_content):
 
 def send_confirmation_email(to_email, confirmation_token):
     """Send email confirmation with token link"""
-    confirmation_url = f"{request.host_url}confirm-email.html?token={confirmation_token}"
+    # Use FRONTEND_URL if set, otherwise fall back to request.host_url for local dev
+    base_url = os.environ.get('FRONTEND_URL', request.host_url.rstrip('/'))
+    confirmation_url = f"{base_url}/confirm-email.html?token={confirmation_token}"
 
     html_content = f'''
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -211,6 +213,8 @@ def send_confirmation_email(to_email, confirmation_token):
         <p>Thank you for subscribing. Please confirm your email and create your password to get started.</p>
         <p><a href="{confirmation_url}" style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Confirm Email & Create Password</a></p>
         <p style="color: #666; font-size: 14px;">This link will expire in 24 hours.</p>
+        <p style="color: #666; font-size: 14px;">If the button doesn't work, copy and paste this link into your browser:</p>
+        <p style="color: #666; font-size: 12px; word-break: break-all;">{confirmation_url}</p>
         <p style="color: #666; font-size: 14px;">If you didn't request this, please ignore this email.</p>
     </div>
     '''
@@ -982,9 +986,11 @@ def stripe_webhook():
     except ValueError as e:
         logger.error(f"Invalid payload: {str(e)}")
         return jsonify({'error': 'Invalid payload'}), 400
-    except stripe.error.SignatureVerificationError as e:
-        logger.error(f"Invalid signature: {str(e)}")
-        return jsonify({'error': 'Invalid signature'}), 400
+    except Exception as e:
+        if 'SignatureVerificationError' in str(type(e)):
+            logger.error(f"Invalid signature: {str(e)}")
+            return jsonify({'error': 'Invalid signature'}), 400
+        raise
     
     # Handle subscription events
     if event['type'] == 'checkout.session.completed':
@@ -1633,6 +1639,11 @@ def payment_cancelled():
 def reset_password_page():
     """Serve password reset page"""
     return send_from_directory('.', 'reset-password.html')
+
+@app.route('/confirm-email.html')
+def confirm_email_page():
+    """Serve email confirmation page"""
+    return send_from_directory('.', 'confirm-email.html')
 
 @app.route('/theme-previews/<path:filename>')
 def serve_theme_preview(filename):
