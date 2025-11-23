@@ -1645,6 +1645,11 @@ def confirm_email_page():
     """Serve email confirmation page"""
     return send_from_directory('.', 'confirm-email.html')
 
+@app.route('/landing.html')
+def landing_page():
+    """Serve landing page"""
+    return send_from_directory('.', 'landing.html')
+
 @app.route('/theme-previews/<path:filename>')
 def serve_theme_preview(filename):
     """Serve theme preview images"""
