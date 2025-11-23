@@ -116,6 +116,16 @@ class ThemeGenerator:
             "title_font": "Times New Roman",
             "layouts": ["right", "left", "bottom", "top"]
         },
+        "Red Carpet": {
+            "primary_color": RGBColor(255, 255, 255),
+            "secondary_color": RGBColor(240, 240, 240),
+            "text_color": RGBColor(255, 255, 255),
+            "accent_color": RGBColor(255, 255, 255),
+            "background": RGBColor(139, 0, 0),
+            "font": "Times New Roman",
+            "title_font": "Times New Roman",
+            "layouts": ["right", "left", "bottom", "top"]
+        },
         "Film Flare": {
             "primary_color": RGBColor(255, 215, 0),  # Golden yellow
             "secondary_color": RGBColor(240, 200, 0),  # Lighter yellow
@@ -132,8 +142,8 @@ class ThemeGenerator:
             "text_color": RGBColor(255, 255, 255),  # White text
             "accent_color": RGBColor(255, 255, 255),  # White
             "background": RGBColor(0, 0, 0),  # Black (for fallback)
-            "font": "Times New Roman",
-            "title_font": "Times New Roman",
+            "font": "Lobster",
+            "title_font": "Lobster",
             "layouts": ["left", "right"]  # Only 2 body backgrounds
         }
     }
@@ -936,6 +946,8 @@ class ThemeGenerator:
             self._add_sunset_orange_content(slide, title, bullets)
         elif self.theme_name == "Minimalist Gray":
             self._add_minimalist_gray_content(slide, title, bullets)
+        elif self.theme_name == "Red Carpet":
+            self._add_red_carpet_content(slide, title, bullets)
         elif self.theme_name == "Ocean Blue":
             self._add_ocean_blue_content(slide, title, bullets)
         elif self.theme_name == "Simplistic Red and White":
@@ -1152,6 +1164,64 @@ class ThemeGenerator:
         )
         img_placeholder.fill.solid()
         img_placeholder.fill.fore_color.rgb = RGBColor(140, 140, 140)
+        img_placeholder.line.fill.background()
+
+    def _add_red_carpet_content(self, slide, title, bullets):
+        """Red Carpet theme: Split layout with text left, image right (deep red background, white text)"""
+        # Deep red background
+        bg = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE, 0, 0,
+            self.prs.slide_width, self.prs.slide_height
+        )
+        bg.fill.solid()
+        bg.fill.fore_color.rgb = self.theme["background"]
+        bg.line.fill.background()
+
+        # Title - italic with underline
+        title_box = slide.shapes.add_textbox(
+            Inches(0.5), Inches(0.8), Inches(5), Inches(0.8)
+        )
+        tf = title_box.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        p.text = title
+        p.font.name = self.theme["title_font"]
+        p.font.size = Pt(48)
+        p.font.italic = True
+        p.font.color.rgb = self.theme["text_color"]
+        p.alignment = PP_ALIGN.LEFT
+
+        # Underline
+        line = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            Inches(0.5), Inches(1.65), Inches(5.5), Pt(2)
+        )
+        line.fill.solid()
+        line.fill.fore_color.rgb = self.theme["text_color"]
+        line.line.fill.background()
+
+        # Bullet points on left
+        y_pos = 2.3
+        for i, bullet in enumerate(bullets[:3]):
+            bullet_box = slide.shapes.add_textbox(
+                Inches(0.8), Inches(y_pos), Inches(4.5), Inches(0.6)
+            )
+            tf = bullet_box.text_frame
+            p = tf.paragraphs[0]
+            p.text = f"• {bullet}"
+            p.font.name = self.theme["font"]
+            p.font.size = Pt(24)
+            p.font.color.rgb = self.theme["text_color"]
+            p.alignment = PP_ALIGN.LEFT
+            y_pos += 1.1
+
+        # Tall image placeholder on right
+        img_placeholder = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            Inches(6.2), Inches(0.8), Inches(3.3), Inches(6.2)
+        )
+        img_placeholder.fill.solid()
+        img_placeholder.fill.fore_color.rgb = RGBColor(180, 0, 0)
         img_placeholder.line.fill.background()
 
     def _add_ocean_blue_content(self, slide, title, bullets):
