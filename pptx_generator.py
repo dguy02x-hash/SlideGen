@@ -115,6 +115,26 @@ class ThemeGenerator:
             "font": "Times New Roman",
             "title_font": "Times New Roman",
             "layouts": ["right", "left", "bottom", "top"]
+        },
+        "Film Flare": {
+            "primary_color": RGBColor(255, 215, 0),  # Golden yellow
+            "secondary_color": RGBColor(240, 200, 0),  # Lighter yellow
+            "text_color": RGBColor(255, 215, 0),  # Yellow text
+            "accent_color": RGBColor(255, 215, 0),  # Yellow
+            "background": RGBColor(0, 0, 0),  # Black (for fallback)
+            "font": "EB Garamond ExtraBold",
+            "title_font": "EB Garamond ExtraBold",
+            "layouts": ["right", "left", "top", "bottom"]
+        },
+        "Iridiscent Glow": {
+            "primary_color": RGBColor(255, 255, 255),  # White
+            "secondary_color": RGBColor(240, 240, 240),  # Light gray
+            "text_color": RGBColor(255, 255, 255),  # White text
+            "accent_color": RGBColor(255, 255, 255),  # White
+            "background": RGBColor(0, 0, 0),  # Black (for fallback)
+            "font": "Times New Roman",
+            "title_font": "Times New Roman",
+            "layouts": ["left", "right"]  # Only 2 body backgrounds
         }
     }
     
@@ -609,6 +629,86 @@ class ThemeGenerator:
             p.font.color.rgb = RGBColor(255, 255, 255)
             p.alignment = PP_ALIGN.CENTER
 
+        elif self.theme_name == "Film Flare":
+            # Load title background image
+            self._add_background_image(slide, "Film Flare Title Background.jpg")
+
+            # Title - yellow, centered
+            title_box = slide.shapes.add_textbox(
+                Inches(1), Inches(2.5), Inches(8), Inches(1.5)
+            )
+            tf = title_box.text_frame
+            tf.word_wrap = True
+            p = tf.paragraphs[0]
+            p.text = title
+            p.font.name = self.theme["title_font"]
+            p.font.size = Pt(72)
+            p.font.bold = True
+            p.font.color.rgb = RGBColor(255, 215, 0)  # Yellow
+            p.alignment = PP_ALIGN.CENTER
+
+            # Subtitle - yellow, centered below title
+            by_box = slide.shapes.add_textbox(
+                Inches(1), Inches(4.2), Inches(8), Inches(0.7)
+            )
+            tf = by_box.text_frame
+            p = tf.paragraphs[0]
+            p.text = f"Presented by {presenter_name}"
+            p.font.name = self.theme["font"]
+            p.font.size = Pt(32)
+            p.font.bold = True
+            p.font.color.rgb = RGBColor(255, 215, 0)  # Yellow
+            p.alignment = PP_ALIGN.CENTER
+
+        elif self.theme_name == "Iridiscent Glow":
+            # Load title background image
+            self._add_background_image(slide, "Iridiscent Glow Title.jpg")
+
+            # Title - shiny gray with 3D shadow effect, centered
+            title_box = slide.shapes.add_textbox(
+                Inches(1), Inches(2.5), Inches(8), Inches(1.5)
+            )
+            # Add shadow for 3D effect
+            shadow = title_box.shadow
+            shadow.inherit = False
+            shadow.visible = True
+            shadow.distance = Pt(4)
+            shadow.angle = 45
+            shadow.blur_radius = Pt(4)
+            shadow.transparency = 0.5
+
+            tf = title_box.text_frame
+            tf.word_wrap = True
+            p = tf.paragraphs[0]
+            p.text = title
+            p.font.name = self.theme["title_font"]
+            p.font.size = Pt(72)
+            p.font.bold = True
+            p.font.color.rgb = RGBColor(169, 169, 169)  # Shiny gray
+            p.alignment = PP_ALIGN.CENTER
+
+            # Subtitle - shiny gray with 3D shadow effect, centered below title
+            by_box = slide.shapes.add_textbox(
+                Inches(1), Inches(4.2), Inches(8), Inches(0.7)
+            )
+            # Add shadow for 3D effect
+            shadow = by_box.shadow
+            shadow.inherit = False
+            shadow.visible = True
+            shadow.distance = Pt(3)
+            shadow.angle = 45
+            shadow.blur_radius = Pt(3)
+            shadow.transparency = 0.5
+
+            tf = by_box.text_frame
+            p = tf.paragraphs[0]
+            p.text = f"Presented by {presenter_name}"
+            p.font.name = self.theme["font"]
+            p.font.size = Pt(32)
+            p.font.bold = True
+            p.font.color.rgb = RGBColor(169, 169, 169)  # Shiny gray
+            p.alignment = PP_ALIGN.CENTER
+
         elif self.theme_name == "Ocean Blue":
             # Blue background
             bg = slide.shapes.add_shape(
@@ -842,6 +942,10 @@ class ThemeGenerator:
             self._add_simplistic_red_content(slide, title, bullets)
         elif self.theme_name == "Business Black and Yellow":
             self._add_business_black_content(slide, title, bullets)
+        elif self.theme_name == "Film Flare":
+            self._add_film_flare_content(slide, title, bullets)
+        elif self.theme_name == "Iridiscent Glow":
+            self._add_iridiscent_glow_content(slide, title, bullets)
         else:
             # Fallback for any other themes
             self._add_default_content(slide, title, bullets)
@@ -1103,10 +1207,6 @@ class ThemeGenerator:
 
     def _add_simplistic_red_content(self, slide, title, bullets):
         """Simplistic Red and White theme: Image left, bullets right, diagonal triangle bottom"""
-        # AI Grammar check for Simplistic Red and White theme
-        title = proofread_slide_text(title)
-        bullets = [proofread_slide_text(bullet) for bullet in bullets]
-
         # Light beige background
         bg = slide.shapes.add_shape(
             MSO_SHAPE.RECTANGLE, 0, 0,
@@ -1285,6 +1385,271 @@ class ThemeGenerator:
         # Increment layout index for next slide
         self.layout_index += 1
 
+    def _add_film_flare_content(self, slide, title, bullets):
+        """Film Flare theme: Alternating layouts with background images and yellow text"""
+        # Get current layout (cycles through 'right', 'left', 'top', 'bottom')
+        layout_type = self.theme["layouts"][self.layout_index % len(self.theme["layouts"])]
+
+        # Load background image based on layout type
+        if layout_type == "right":
+            self._add_background_image(slide, "Film Flare Body 1 Background.jpg")
+        elif layout_type == "left":
+            self._add_background_image(slide, "Film Flare Body 2 Background.jpg")
+        elif layout_type == "top":
+            self._add_background_image(slide, "Film Flare Body 3 Background.jpg")
+        else:  # bottom
+            self._add_background_image(slide, "Film Flare Body 4 Background.jpg")
+
+        # Title - yellow, EB Garamond ExtraBold
+        if layout_type in ["right", "left"]:
+            # Title on left for right/left layouts
+            title_box = slide.shapes.add_textbox(
+                Inches(0.5), Inches(0.5), Inches(5), Inches(0.8)
+            )
+        else:
+            # Centered title for top/bottom layouts
+            title_box = slide.shapes.add_textbox(
+                Inches(2), Inches(0.5), Inches(6), Inches(0.8)
+            )
+
+        tf = title_box.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        p.text = title
+        p.font.name = self.theme["title_font"]
+        p.font.size = Pt(48)
+        p.font.bold = True
+        p.font.color.rgb = RGBColor(255, 215, 0)  # Yellow
+        p.alignment = PP_ALIGN.LEFT if layout_type in ["right", "left"] else PP_ALIGN.CENTER
+
+        # Content and image placement based on layout
+        if layout_type == "right":
+            # Bullets on left, image placeholder on right
+            y_pos = 2
+            for i, bullet in enumerate(bullets[:4]):
+                bullet_box = slide.shapes.add_textbox(
+                    Inches(0.8), Inches(y_pos), Inches(5), Inches(0.8)
+                )
+                tf = bullet_box.text_frame
+                tf.word_wrap = True
+                p = tf.paragraphs[0]
+                p.text = f"• {bullet}"
+                p.font.name = self.theme["font"]
+                p.font.size = Pt(24)
+                p.font.bold = True
+                p.font.color.rgb = RGBColor(255, 215, 0)  # Yellow
+                p.alignment = PP_ALIGN.LEFT
+                y_pos += 1.1
+
+            # Image placeholder on right
+            img_box = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE,
+                Inches(6.5), Inches(1.8), Inches(3), Inches(4.5)
+            )
+            img_box.fill.solid()
+            img_box.fill.fore_color.rgb = RGBColor(50, 50, 50)  # Dark gray
+            img_box.line.color.rgb = RGBColor(255, 215, 0)  # Yellow border
+            img_box.line.width = Pt(3)
+
+        elif layout_type == "left":
+            # Image placeholder on left, bullets on right
+            img_box = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE,
+                Inches(0.5), Inches(1.8), Inches(3.5), Inches(4.5)
+            )
+            img_box.fill.solid()
+            img_box.fill.fore_color.rgb = RGBColor(50, 50, 50)  # Dark gray
+            img_box.line.color.rgb = RGBColor(255, 215, 0)  # Yellow border
+            img_box.line.width = Pt(3)
+
+            # Bullets on right
+            y_pos = 2
+            for i, bullet in enumerate(bullets[:4]):
+                bullet_box = slide.shapes.add_textbox(
+                    Inches(4.5), Inches(y_pos), Inches(5), Inches(0.8)
+                )
+                tf = bullet_box.text_frame
+                tf.word_wrap = True
+                p = tf.paragraphs[0]
+                p.text = f"• {bullet}"
+                p.font.name = self.theme["font"]
+                p.font.size = Pt(24)
+                p.font.bold = True
+                p.font.color.rgb = RGBColor(255, 215, 0)  # Yellow
+                p.alignment = PP_ALIGN.LEFT
+                y_pos += 1.1
+
+        elif layout_type == "top":
+            # Image placeholder on top, bullets below
+            img_box = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE,
+                Inches(2), Inches(1.5), Inches(6), Inches(2.5)
+            )
+            img_box.fill.solid()
+            img_box.fill.fore_color.rgb = RGBColor(50, 50, 50)  # Dark gray
+            img_box.line.color.rgb = RGBColor(255, 215, 0)  # Yellow border
+            img_box.line.width = Pt(3)
+
+            # Bullets below
+            y_pos = 4.3
+            for i, bullet in enumerate(bullets[:3]):
+                bullet_box = slide.shapes.add_textbox(
+                    Inches(1), Inches(y_pos), Inches(8), Inches(0.7)
+                )
+                tf = bullet_box.text_frame
+                tf.word_wrap = True
+                p = tf.paragraphs[0]
+                p.text = f"• {bullet}"
+                p.font.name = self.theme["font"]
+                p.font.size = Pt(24)
+                p.font.bold = True
+                p.font.color.rgb = RGBColor(255, 215, 0)  # Yellow
+                p.alignment = PP_ALIGN.CENTER
+                y_pos += 0.9
+
+        else:  # bottom
+            # Bullets on top, image placeholder below
+            y_pos = 1.8
+            for i, bullet in enumerate(bullets[:3]):
+                bullet_box = slide.shapes.add_textbox(
+                    Inches(1), Inches(y_pos), Inches(8), Inches(0.7)
+                )
+                tf = bullet_box.text_frame
+                tf.word_wrap = True
+                p = tf.paragraphs[0]
+                p.text = f"• {bullet}"
+                p.font.name = self.theme["font"]
+                p.font.size = Pt(24)
+                p.font.bold = True
+                p.font.color.rgb = RGBColor(255, 215, 0)  # Yellow
+                p.alignment = PP_ALIGN.CENTER
+                y_pos += 0.9
+
+            # Image placeholder below
+            img_box = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE,
+                Inches(2), Inches(4.5), Inches(6), Inches(2.5)
+            )
+            img_box.fill.solid()
+            img_box.fill.fore_color.rgb = RGBColor(50, 50, 50)  # Dark gray
+            img_box.line.color.rgb = RGBColor(255, 215, 0)  # Yellow border
+            img_box.line.width = Pt(3)
+
+        # Increment layout index for next slide
+        self.layout_index += 1
+
+    def _add_iridiscent_glow_content(self, slide, title, bullets):
+        """Iridiscent Glow theme: Alternating left/right layouts with background images and dark grey text"""
+        # Get current layout (cycles through 'left', 'right')
+        layout_type = self.theme["layouts"][self.layout_index % len(self.theme["layouts"])]
+
+        # Load background image based on layout type
+        if layout_type == "left":
+            self._add_background_image(slide, "Iridiscent Glow Body 1.jpg")
+        else:  # right
+            self._add_background_image(slide, "Iridiscent Glow Body 2.jpg")
+
+        # Title - shiny gray with 3D shadow effect
+        title_box = slide.shapes.add_textbox(
+            Inches(0.5), Inches(0.5), Inches(5), Inches(0.8)
+        )
+        # Add shadow for 3D effect
+        shadow = title_box.shadow
+        shadow.inherit = False
+        shadow.visible = True
+        shadow.distance = Pt(4)
+        shadow.angle = 45
+        shadow.blur_radius = Pt(4)
+        shadow.transparency = 0.5
+
+        tf = title_box.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        p.text = title
+        p.font.name = self.theme["title_font"]
+        p.font.size = Pt(48)
+        p.font.bold = True
+        p.font.color.rgb = RGBColor(169, 169, 169)  # Shiny gray
+        p.alignment = PP_ALIGN.LEFT
+
+        # Content and image placement based on layout
+        if layout_type == "left":
+            # Image placeholder on left, bullets on right
+            img_box = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE,
+                Inches(0.5), Inches(1.8), Inches(3.5), Inches(4.5)
+            )
+            img_box.fill.solid()
+            img_box.fill.fore_color.rgb = RGBColor(200, 200, 200)  # Light gray
+            img_box.line.color.rgb = RGBColor(50, 50, 50)  # Dark grey border
+            img_box.line.width = Pt(3)
+
+            # Bullets on right - shiny gray with 3D shadow effect
+            y_pos = 2
+            for i, bullet in enumerate(bullets[:4]):
+                bullet_box = slide.shapes.add_textbox(
+                    Inches(4.5), Inches(y_pos), Inches(5), Inches(0.8)
+                )
+                # Add shadow for 3D effect
+                shadow = bullet_box.shadow
+                shadow.inherit = False
+                shadow.visible = True
+                shadow.distance = Pt(3)
+                shadow.angle = 45
+                shadow.blur_radius = Pt(3)
+                shadow.transparency = 0.5
+
+                tf = bullet_box.text_frame
+                tf.word_wrap = True
+                p = tf.paragraphs[0]
+                p.text = f"• {bullet}"
+                p.font.name = self.theme["font"]
+                p.font.size = Pt(24)
+                p.font.bold = True
+                p.font.color.rgb = RGBColor(169, 169, 169)  # Shiny gray
+                p.alignment = PP_ALIGN.LEFT
+                y_pos += 1.1
+
+        else:  # right
+            # Bullets on left - shiny gray with 3D shadow effect
+            y_pos = 2
+            for i, bullet in enumerate(bullets[:4]):
+                bullet_box = slide.shapes.add_textbox(
+                    Inches(0.8), Inches(y_pos), Inches(5), Inches(0.8)
+                )
+                # Add shadow for 3D effect
+                shadow = bullet_box.shadow
+                shadow.inherit = False
+                shadow.visible = True
+                shadow.distance = Pt(3)
+                shadow.angle = 45
+                shadow.blur_radius = Pt(3)
+                shadow.transparency = 0.5
+
+                tf = bullet_box.text_frame
+                tf.word_wrap = True
+                p = tf.paragraphs[0]
+                p.text = f"• {bullet}"
+                p.font.name = self.theme["font"]
+                p.font.size = Pt(24)
+                p.font.bold = True
+                p.font.color.rgb = RGBColor(169, 169, 169)  # Shiny gray
+                p.alignment = PP_ALIGN.LEFT
+                y_pos += 1.1
+
+            # Image placeholder on right
+            img_box = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE,
+                Inches(6.5), Inches(1.8), Inches(3), Inches(4.5)
+            )
+            img_box.fill.solid()
+            img_box.fill.fore_color.rgb = RGBColor(200, 200, 200)  # Light gray
+            img_box.line.color.rgb = RGBColor(50, 50, 50)  # Dark grey border
+            img_box.line.width = Pt(3)
+
+        # Increment layout index for next slide
+        self.layout_index += 1
+
     def _add_default_content(self, slide, title, bullets):
         """Fallback default layout for themes without specific layouts"""
         # Background
@@ -1358,6 +1723,12 @@ class ThemeGenerator:
         elif self.theme_name == "Business Black and Yellow":
             # Load title background image (same as title slide)
             self._add_background_image(slide, "Business Black and Yellow Title Background.jpg")
+        elif self.theme_name == "Film Flare":
+            # Load title background image (same as title slide)
+            self._add_background_image(slide, "Film Flare Title Background.jpg")
+        elif self.theme_name == "Iridiscent Glow":
+            # Load thank you background image
+            self._add_background_image(slide, "Iridiscent Glow Thank You.jpg")
         else:
             # Solid background for other themes
             bg = slide.shapes.add_shape(
@@ -1387,6 +1758,10 @@ class ThemeGenerator:
             p.font.color.rgb = self.theme["title_text_color"]
         elif self.theme_name == "Simplistic Red and White":
             p.font.color.rgb = self.theme["accent_color"]
+        elif self.theme_name == "Film Flare":
+            p.font.color.rgb = RGBColor(255, 215, 0)  # Yellow
+        elif self.theme_name == "Iridiscent Glow":
+            p.font.color.rgb = RGBColor(50, 50, 50)  # Dark grey
         else:
             p.font.color.rgb = self.theme["text_color"]
 

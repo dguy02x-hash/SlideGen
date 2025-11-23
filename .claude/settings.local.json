@@ -18,7 +18,15 @@
       "Bash(git commit:*)",
       "Bash(git remote add:*)",
       "Bash(git branch:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(find:*)",
+      "Bash(git rm:*)",
+      "Bash(git config:*)",
+      "Bash(PORT=5001 python3:*)",
+      "Bash(cat:*)",
+      "Bash(pip3 install:*)",
+      "Bash(export PORT=5001)",
+      "Bash(pip3 freeze:*)"
     ],
     "deny": [],
     "ask": []

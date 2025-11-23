@@ -1013,8 +1013,31 @@ Make it comprehensive, professional, and ensure each section is DISTINCT with VE
         import re
         # Remove trailing commas before closing brackets/braces
         response = re.sub(r',(\s*[}\]])', r'\1', response)
+        # Remove comments (// or /* */)
+        response = re.sub(r'//.*?$', '', response, flags=re.MULTILINE)
+        response = re.sub(r'/\*.*?\*/', '', response, flags=re.DOTALL)
 
-        result = json.loads(response)
+        # Try to parse JSON with better error handling
+        try:
+            result = json.loads(response)
+        except json.JSONDecodeError as e:
+            # Log the malformed JSON for debugging
+            logger.error(f"JSON parsing error: {str(e)}")
+            logger.error(f"Malformed JSON response (first 500 chars): {response[:500]}")
+
+            # Retry with a simplified prompt
+            logger.info("Retrying research with simplified prompt...")
+            retry_prompt = f"""Create a {num_slides}-slide presentation outline on: {topic}
+
+Return ONLY valid JSON in this EXACT format (no extra text, no markdown):
+{{"sections": [{{"title": "Intro", "facts": ["First fact.", "Second fact.", "Third fact."]}}]}}
+
+CRITICAL: Must be valid JSON. Each title max 2 words. Each fact must be a complete sentence."""
+
+            response = call_anthropic(retry_prompt, max_tokens=3000)
+            response = response.replace('```json\n', '').replace('\n```', '').replace('```', '').strip()
+            response = re.sub(r',(\s*[}\]])', r'\1', response)
+            result = json.loads(response)
         
         return jsonify(result)
     
@@ -1375,6 +1398,27 @@ Speaker notes:"""
                         # Fallback: Just join the facts
                         section['custom_notes'] = ' '.join(section['facts'])
 
+        # Grammar check ALL slide titles and bullets for all themes
+        logger.info("Grammar checking slide text (titles and bullets)")
+        for section in sections:
+            # Proofread slide title
+            if 'title' in section and section['title']:
+                try:
+                    section['title'] = proofread_slide_text(section['title'])
+                except Exception as e:
+                    logger.warning(f"Failed to proofread title: {e}")
+
+            # Proofread bullets/facts
+            if 'facts' in section and section['facts']:
+                proofread_facts = []
+                for fact in section['facts']:
+                    try:
+                        proofread_facts.append(proofread_slide_text(fact))
+                    except Exception as e:
+                        logger.warning(f"Failed to proofread bullet: {e}")
+                        proofread_facts.append(fact)  # Use original if proofreading fails
+                section['facts'] = proofread_facts
+
         # Generate presentation in temp file
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pptx') as tmp:
             filename = generate_presentation(
@@ -1474,7 +1518,7 @@ if __name__ == '__main__':
     print("✓ Authentication system ready")
     print("✓ PAYMENT REQUIRED - $5.99/month for 10 presentations")
     print("✓ NO FREE TIER - Users must subscribe to generate presentations")
-    print("✓ Grammar proofreading enabled for speaker notes")
+    print("✓ Grammar proofreading enabled for slide text and speaker notes")
 
     # Get configuration from environment
     port = int(os.environ.get('PORT', 5000))
