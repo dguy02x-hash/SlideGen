@@ -214,19 +214,24 @@ def subscription_required(f):
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             return jsonify({'error': 'Authentication required'}), 401
-        
+
         conn = get_db()
         cursor = conn.cursor()
         user = cursor.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
         conn.close()
-        
+
+        # Dev bypass for dguy02x@gmail.com - skip subscription check
+        if user and user['email'] == 'dguy02x@gmail.com':
+            logger.info(f"Subscription bypass for dev account: {user['email']}")
+            return f(*args, **kwargs)
+
         if not user or user['subscription_status'] != 'premium':
             return jsonify({
                 'error': 'Active subscription required',
                 'subscription_required': True,
                 'subscription_status': user['subscription_status'] if user else 'inactive'
             }), 403
-        
+
         return f(*args, **kwargs)
     return decorated_function
 
@@ -797,8 +802,8 @@ def create_checkout_session():
                 'quantity': 1,
             }],
             mode='subscription',
-            success_url=request.host_url + 'payment-success.html?session_id={CHECKOUT_SESSION_ID}',
-            cancel_url=request.host_url + 'landing.html',
+            success_url=request.host_url + 'payment-success?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url=request.host_url,
             customer_email=None,  # Let Stripe collect email
             allow_promotion_codes=True,
         )
