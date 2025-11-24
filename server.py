@@ -170,6 +170,34 @@ def init_db():
     ''')
 
     conn.commit()
+
+    # Auto-grant premium to dev account
+    dev_email = 'dguy02x@gmail.com'
+    existing_user = cursor.execute('SELECT id, subscription_status FROM users WHERE email = ?', (dev_email,)).fetchone()
+
+    if existing_user:
+        # Update existing user to premium
+        if existing_user['subscription_status'] != 'premium':
+            cursor.execute('''
+                UPDATE users
+                SET subscription_status = 'premium',
+                    generations_limit = 10,
+                    generations_used = 0,
+                    last_reset = ?
+                WHERE email = ?
+            ''', (datetime.now().isoformat(), dev_email))
+            conn.commit()
+            logger.info(f"✅ Auto-granted premium to dev account: {dev_email}")
+    else:
+        # Create dev account with premium
+        password_hash = hash_password('changeme123')
+        cursor.execute('''
+            INSERT INTO users (email, password_hash, subscription_status, generations_limit, generations_used, last_reset)
+            VALUES (?, ?, 'premium', 10, 0, ?)
+        ''', (dev_email, password_hash, datetime.now().isoformat()))
+        conn.commit()
+        logger.info(f"✅ Created premium dev account: {dev_email}")
+
     conn.close()
     logger.info("Database initialized successfully")
 

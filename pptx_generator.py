@@ -145,6 +145,16 @@ class ThemeGenerator:
             "font": "Lobster",
             "title_font": "Lobster",
             "layouts": ["left", "right"]  # Only 2 body backgrounds
+        },
+        "Notepad and Folder": {
+            "primary_color": RGBColor(70, 50, 30),  # Dark brown
+            "secondary_color": RGBColor(222, 184, 135),  # Tan/manila folder color
+            "text_color": RGBColor(50, 50, 50),  # Dark gray text
+            "accent_color": RGBColor(70, 50, 30),  # Dark brown
+            "background": RGBColor(222, 184, 135),  # Tan folder background
+            "font": "Caveat",
+            "title_font": "Caveat",
+            "layouts": ["left", "right"]  # 2 body slide layouts
         }
     }
     
@@ -717,6 +727,36 @@ class ThemeGenerator:
             p.font.size = Pt(32)
             p.font.bold = True
             p.font.color.rgb = RGBColor(169, 169, 169)  # Shiny gray
+
+        elif self.theme_name == "Notepad and Folder":
+            # Load title background image
+            self._add_background_image(slide, "Notepad and Folder Title.JPG")
+
+            # Title - centered, dark brown text, Caveat font
+            title_box = slide.shapes.add_textbox(
+                Inches(1), Inches(2.5), Inches(8), Inches(1.5)
+            )
+            tf = title_box.text_frame
+            tf.word_wrap = True
+            tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+            p = tf.paragraphs[0]
+            p.text = title
+            p.font.name = self.theme["title_font"]
+            p.font.size = Pt(66)
+            p.font.bold = True
+            p.font.color.rgb = self.theme["text_color"]
+            p.alignment = PP_ALIGN.CENTER
+
+            # Subtitle - centered below title, dark brown text, Caveat font
+            by_box = slide.shapes.add_textbox(
+                Inches(1), Inches(4.2), Inches(8), Inches(0.7)
+            )
+            tf = by_box.text_frame
+            p = tf.paragraphs[0]
+            p.text = f"Presented by {presenter_name}"
+            p.font.name = self.theme["font"]
+            p.font.size = Pt(32)
+            p.font.color.rgb = self.theme["text_color"]
             p.alignment = PP_ALIGN.CENTER
 
         elif self.theme_name == "Ocean Blue":
@@ -958,6 +998,8 @@ class ThemeGenerator:
             self._add_film_flare_content(slide, title, bullets)
         elif self.theme_name == "Iridiscent Glow":
             self._add_iridiscent_glow_content(slide, title, bullets)
+        elif self.theme_name == "Notepad and Folder":
+            self._add_notepad_and_folder_content(slide, title, bullets)
         else:
             # Fallback for any other themes
             self._add_default_content(slide, title, bullets)
@@ -1720,6 +1762,91 @@ class ThemeGenerator:
         # Increment layout index for next slide
         self.layout_index += 1
 
+    def _add_notepad_and_folder_content(self, slide, title, bullets):
+        """Notepad and Folder theme: Alternating left/right layouts with background images"""
+        # Get current layout (cycles through 'left', 'right')
+        layout_type = self.theme["layouts"][self.layout_index % len(self.theme["layouts"])]
+
+        # Load background image based on layout type
+        if layout_type == "left":
+            self._add_background_image(slide, "Notepad and Folder Body 1.JPG")
+        else:  # right
+            self._add_background_image(slide, "Notepad and Folder Body 2.JPG")
+
+        # Title - dark brown text with Caveat font
+        title_box = slide.shapes.add_textbox(
+            Inches(0.5), Inches(0.5), Inches(5), Inches(0.8)
+        )
+        tf = title_box.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        p.text = title
+        p.font.name = self.theme["title_font"]
+        p.font.size = Pt(44)
+        p.font.bold = True
+        p.font.color.rgb = self.theme["text_color"]
+        p.alignment = PP_ALIGN.LEFT
+
+        # Content and image placement based on layout
+        if layout_type == "left":
+            # Image placeholder on left, bullets on right
+            img_box = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE,
+                Inches(0.5), Inches(1.8), Inches(3.5), Inches(4.5)
+            )
+            img_box.fill.solid()
+            img_box.fill.fore_color.rgb = RGBColor(180, 180, 180)  # Light gray placeholder
+            img_box.line.color.rgb = self.theme["accent_color"]
+            img_box.line.width = Pt(2)
+
+            # Bullets on right - dark brown text with Caveat font
+            y_pos = 2
+            for i, bullet in enumerate(bullets[:4]):
+                bullet_box = slide.shapes.add_textbox(
+                    Inches(4.5), Inches(y_pos), Inches(5), Inches(0.8)
+                )
+                tf = bullet_box.text_frame
+                tf.word_wrap = True
+                p = tf.paragraphs[0]
+                p.text = f"• {bullet}"
+                p.font.name = self.theme["font"]
+                p.font.size = Pt(22)
+                p.font.bold = True
+                p.font.color.rgb = self.theme["text_color"]
+                p.alignment = PP_ALIGN.LEFT
+                y_pos += 1.1
+
+        else:  # right
+            # Bullets on left - dark brown text with Caveat font
+            y_pos = 2
+            for i, bullet in enumerate(bullets[:4]):
+                bullet_box = slide.shapes.add_textbox(
+                    Inches(0.8), Inches(y_pos), Inches(5), Inches(0.8)
+                )
+                tf = bullet_box.text_frame
+                tf.word_wrap = True
+                p = tf.paragraphs[0]
+                p.text = f"• {bullet}"
+                p.font.name = self.theme["font"]
+                p.font.size = Pt(22)
+                p.font.bold = True
+                p.font.color.rgb = self.theme["text_color"]
+                p.alignment = PP_ALIGN.LEFT
+                y_pos += 1.1
+
+            # Image placeholder on right
+            img_box = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE,
+                Inches(6.5), Inches(1.8), Inches(3), Inches(4.5)
+            )
+            img_box.fill.solid()
+            img_box.fill.fore_color.rgb = RGBColor(180, 180, 180)  # Light gray placeholder
+            img_box.line.color.rgb = self.theme["accent_color"]
+            img_box.line.width = Pt(2)
+
+        # Increment layout index for next slide
+        self.layout_index += 1
+
     def _add_default_content(self, slide, title, bullets):
         """Fallback default layout for themes without specific layouts"""
         # Background
@@ -1799,6 +1926,9 @@ class ThemeGenerator:
         elif self.theme_name == "Iridiscent Glow":
             # Load thank you background image
             self._add_background_image(slide, "Iridiscent Glow Thank You.jpg")
+        elif self.theme_name == "Notepad and Folder":
+            # Load thank you background image
+            self._add_background_image(slide, "Notepad and Folder Thank You.jpg")
         else:
             # Solid background for other themes
             bg = slide.shapes.add_shape(
@@ -1832,6 +1962,8 @@ class ThemeGenerator:
             p.font.color.rgb = RGBColor(255, 215, 0)  # Yellow
         elif self.theme_name == "Iridiscent Glow":
             p.font.color.rgb = RGBColor(50, 50, 50)  # Dark grey
+        elif self.theme_name == "Notepad and Folder":
+            p.font.color.rgb = self.theme["text_color"]  # Dark brown
         else:
             p.font.color.rgb = self.theme["text_color"]
 
