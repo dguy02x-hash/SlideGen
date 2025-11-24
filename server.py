@@ -240,23 +240,51 @@ def send_confirmation_email(to_email, confirmation_token):
     confirmation_url = f"{base_url}/confirm-email.html?token={confirmation_token}"
 
     html_content = f'''
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #f59e0b;">Welcome to PresPilot!</h2>
-        <p>Thank you for subscribing. Please confirm your email and create your password to get started.</p>
-        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 20px 0;">
             <tr>
-                <td align="center" style="background-color: #f59e0b; border-radius: 6px;">
-                    <a href="{confirmation_url}" target="_blank" style="font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none; padding: 14px 28px; display: inline-block;">
-                        Confirm Email & Create Password
-                    </a>
+                <td align="center">
+                    <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; padding: 40px 30px; border-radius: 8px;">
+                        <tr>
+                            <td>
+                                <h2 style="color: #f59e0b; margin: 0 0 20px 0; font-size: 24px;">Welcome to PresPilot!</h2>
+                                <p style="color: #333333; font-size: 16px; line-height: 1.5; margin: 0 0 25px 0;">Thank you for subscribing. Please confirm your email and create your password to get started.</p>
+
+                                <!-- Button -->
+                                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 25px 0;">
+                                    <tr>
+                                        <td align="center">
+                                            <table cellpadding="0" cellspacing="0" border="0">
+                                                <tr>
+                                                    <td align="center" bgcolor="#f59e0b" style="border-radius: 6px;">
+                                                        <a href="{confirmation_url}" target="_blank" style="display: inline-block; padding: 16px 40px; font-size: 18px; font-weight: bold; color: #ffffff; text-decoration: none; border-radius: 6px;">Confirm Email & Create Password</a>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                </table>
+
+                                <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0 0 10px 0;">This link will expire in 24 hours.</p>
+                                <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0 0 15px 0; font-weight: bold;">If the button doesn't work, click this link or copy and paste it into your browser:</p>
+                                <p style="margin: 0 0 25px 0; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #f59e0b; word-break: break-all;">
+                                    <a href="{confirmation_url}" style="color: #0066cc; font-size: 14px; text-decoration: underline;">{confirmation_url}</a>
+                                </p>
+                                <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0;">If you didn't request this, you can safely ignore this email.</p>
+                            </td>
+                        </tr>
+                    </table>
                 </td>
             </tr>
         </table>
-        <p style="color: #666; font-size: 14px;">This link will expire in 24 hours.</p>
-        <p style="color: #666; font-size: 14px;">If the button doesn't work, copy and paste this link into your browser:</p>
-        <p style="color: #0066cc; font-size: 12px; word-break: break-all;"><a href="{confirmation_url}" style="color: #0066cc;">{confirmation_url}</a></p>
-        <p style="color: #666; font-size: 14px;">If you didn't request this, please ignore this email.</p>
-    </div>
+    </body>
+    </html>
     '''
 
     return send_email(to_email, 'Confirm Your PresPilot Account', html_content)
@@ -695,10 +723,10 @@ def forgot_password():
                                     <!-- Button -->
                                     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 25px 0;">
                                         <tr>
-                                            <td align="center" style="padding: 0;">
+                                            <td align="center">
                                                 <table cellpadding="0" cellspacing="0" border="0">
                                                     <tr>
-                                                        <td align="center" style="background-color: #f59e0b; border-radius: 6px; padding: 0;">
+                                                        <td align="center" bgcolor="#f59e0b" style="border-radius: 6px;">
                                                             <a href="{reset_url}" target="_blank" style="display: inline-block; padding: 16px 40px; font-size: 18px; font-weight: bold; color: #ffffff; text-decoration: none; border-radius: 6px;">Reset Password</a>
                                                         </td>
                                                     </tr>
