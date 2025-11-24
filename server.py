@@ -645,7 +645,9 @@ def forgot_password():
         conn.close()
 
         # Send password reset email
-        reset_url = f"{request.host_url}reset-password.html?token={reset_token}"
+        # Use FRONTEND_URL if set, otherwise fall back to request.host_url for local dev
+        base_url = os.environ.get('FRONTEND_URL', request.host_url.rstrip('/'))
+        reset_url = f"{base_url}/reset-password.html?token={reset_token}"
 
         html_content = f'''
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
