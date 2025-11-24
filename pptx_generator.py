@@ -1767,11 +1767,11 @@ class ThemeGenerator:
         # Get current layout (cycles through 'left', 'right')
         layout_type = self.theme["layouts"][self.layout_index % len(self.theme["layouts"])]
 
-        # Load background image based on layout type
+        # Load background image based on layout type (SWAPPED: Body 2 first, then Body 1)
         if layout_type == "left":
-            self._add_background_image(slide, "Notepad and Folder Body 1.JPG")
-        else:  # right
             self._add_background_image(slide, "Notepad and Folder Body 2.JPG")
+        else:  # right
+            self._add_background_image(slide, "Notepad and Folder Body 1.JPG")
 
         # Title - dark brown text with Caveat font
         title_box = slide.shapes.add_textbox(
@@ -1787,18 +1787,8 @@ class ThemeGenerator:
         p.font.color.rgb = self.theme["text_color"]
         p.alignment = PP_ALIGN.LEFT
 
-        # Content and image placement based on layout
+        # Content placement based on layout (NO BLANK IMAGE PLACEHOLDERS)
         if layout_type == "left":
-            # Image placeholder on left, bullets on right
-            img_box = slide.shapes.add_shape(
-                MSO_SHAPE.RECTANGLE,
-                Inches(0.5), Inches(1.8), Inches(3.5), Inches(4.5)
-            )
-            img_box.fill.solid()
-            img_box.fill.fore_color.rgb = RGBColor(180, 180, 180)  # Light gray placeholder
-            img_box.line.color.rgb = self.theme["accent_color"]
-            img_box.line.width = Pt(2)
-
             # Bullets on right - dark brown text with Caveat font
             y_pos = 2
             for i, bullet in enumerate(bullets[:4]):
@@ -1833,16 +1823,6 @@ class ThemeGenerator:
                 p.font.color.rgb = self.theme["text_color"]
                 p.alignment = PP_ALIGN.LEFT
                 y_pos += 1.1
-
-            # Image placeholder on right
-            img_box = slide.shapes.add_shape(
-                MSO_SHAPE.RECTANGLE,
-                Inches(6.5), Inches(1.8), Inches(3), Inches(4.5)
-            )
-            img_box.fill.solid()
-            img_box.fill.fore_color.rgb = RGBColor(180, 180, 180)  # Light gray placeholder
-            img_box.line.color.rgb = self.theme["accent_color"]
-            img_box.line.width = Pt(2)
 
         # Increment layout index for next slide
         self.layout_index += 1
