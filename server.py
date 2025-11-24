@@ -1027,33 +1027,53 @@ def stripe_webhook():
         stripe_customer_id = session_obj.get('customer')
         stripe_subscription_id = session_obj.get('subscription')
 
-        # Generate confirmation token and expiration (24 hours)
-        confirmation_token = secrets.token_urlsafe(32)
-        token_expires_at = datetime.utcnow() + timedelta(hours=24)
-
-        # Store pending subscription - account will be created after email confirmation
         conn = get_db()
         cursor = conn.cursor()
 
         try:
-            cursor.execute('''
-                INSERT INTO pending_subscriptions
-                (session_id, customer_email, stripe_customer_id, stripe_subscription_id,
-                 confirmation_token, token_expires_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (session_id, customer_email, stripe_customer_id, stripe_subscription_id,
-                  confirmation_token, token_expires_at))
-            conn.commit()
-            logger.info(f"Stored pending subscription for {customer_email} with confirmation token")
+            # Check if user already exists
+            existing_user = cursor.execute(
+                'SELECT id FROM users WHERE email = ?',
+                (customer_email.lower(),)
+            ).fetchone()
 
-            # Send confirmation email
-            email_sent = send_confirmation_email(customer_email, confirmation_token)
-            if email_sent:
-                logger.info(f"✅ Confirmation email sent to {customer_email}")
+            if existing_user:
+                # User exists - update their subscription status directly
+                cursor.execute('''
+                    UPDATE users
+                    SET subscription_status = 'premium',
+                        generations_limit = 10,
+                        generations_used = 0,
+                        stripe_customer_id = ?,
+                        stripe_subscription_id = ?,
+                        last_reset = ?
+                    WHERE id = ?
+                ''', (stripe_customer_id, stripe_subscription_id, datetime.now().isoformat(), existing_user['id']))
+                conn.commit()
+                logger.info(f"✅ Upgraded existing user {customer_email} to premium")
             else:
-                logger.error(f"❌ Failed to send confirmation email to {customer_email}")
+                # New user - create pending subscription for email confirmation flow
+                confirmation_token = secrets.token_urlsafe(32)
+                token_expires_at = datetime.utcnow() + timedelta(hours=24)
+
+                cursor.execute('''
+                    INSERT INTO pending_subscriptions
+                    (session_id, customer_email, stripe_customer_id, stripe_subscription_id,
+                     confirmation_token, token_expires_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (session_id, customer_email, stripe_customer_id, stripe_subscription_id,
+                      confirmation_token, token_expires_at))
+                conn.commit()
+                logger.info(f"Stored pending subscription for {customer_email} with confirmation token")
+
+                # Send confirmation email
+                email_sent = send_confirmation_email(customer_email, confirmation_token)
+                if email_sent:
+                    logger.info(f"✅ Confirmation email sent to {customer_email}")
+                else:
+                    logger.error(f"❌ Failed to send confirmation email to {customer_email}")
         except Exception as e:
-            logger.error(f"Error storing pending subscription: {str(e)}")
+            logger.error(f"Error handling checkout session: {str(e)}")
         finally:
             conn.close()
     
