@@ -448,7 +448,7 @@
             </ul>
             <div class="nav-buttons">
                 <a href="/app.html" class="btn btn-secondary" id="sign-in-btn">Sign In</a>
-                <a href="/subscribe.html" class="btn btn-primary" id="get-started-btn">Get Started</a>
+                <a href="/subscribe.html" class="btn btn-primary" id="get-started-btn" onclick="handleCTAClick(event)">Get Started</a>
                 <button id="cancel-subscription-btn" class="btn" style="display: none; background: #dc3545; color: white;" onclick="cancelSubscription()">Cancel Subscription</button>
             </div>
         </nav>
@@ -460,7 +460,7 @@
             <h1>Create Stunning Presentations in Minutes</h1>
             <p>AI-powered presentation generation with detailed speaker notes. Transform your ideas into professional slides with just a few clicks.</p>
             <div class="hero-buttons">
-                <a href="/subscribe.html" class="btn btn-primary btn-large">Start Creating Now</a>
+                <a href="/subscribe.html" class="btn btn-primary btn-large" id="hero-cta-btn" onclick="handleCTAClick(event)">Start Creating Now</a>
                 <a href="#how-it-works" class="btn btn-secondary btn-large">See How It Works</a>
             </div>
         </div>
@@ -524,7 +524,7 @@
                     <li>Download as PowerPoint</li>
                     <li>Priority support</li>
                 </ul>
-                <a href="/subscribe.html" class="btn btn-primary btn-large">Subscribe Now</a>
+                <a href="/subscribe.html" class="btn btn-primary btn-large" onclick="handleCTAClick(event)">Subscribe Now</a>
             </div>
         </div>
     </section>
@@ -564,7 +564,7 @@
         <div class="cta-content">
             <h2>Ready to Create Amazing Presentations?</h2>
             <p>Join professionals and students who are saving hours on presentation creation</p>
-            <a href="/subscribe.html" class="btn btn-primary btn-large">Get Started Today</a>
+            <a href="/subscribe.html" class="btn btn-primary btn-large" onclick="handleCTAClick(event)">Get Started Today</a>
         </div>
     </section>
 
@@ -588,6 +588,8 @@
             ? 'http://localhost:5001'
             : window.location.origin;
 
+        let currentUserStatus = null;
+
         // Check authentication on page load
         window.addEventListener('load', async () => {
             try {
@@ -598,12 +600,14 @@
                 if (response.ok) {
                     const data = await response.json();
                     const currentUser = data.user;
+                    currentUserStatus = currentUser.subscription_status;
 
                     // Show cancel button only for active/premium subscribers
                     if (currentUser.subscription_status === 'active' || currentUser.subscription_status === 'premium') {
                         document.getElementById('cancel-subscription-btn').style.display = 'inline-block';
                         // Optionally hide Sign In / Get Started buttons for logged-in users
                         document.getElementById('sign-in-btn').textContent = 'Go to App';
+                        document.getElementById('sign-in-btn').href = '/app.html';
                         document.getElementById('get-started-btn').style.display = 'none';
                     }
                 }
@@ -611,6 +615,36 @@
                 // User not authenticated, keep default buttons visible
             }
         });
+
+        // Handle CTA button clicks - check subscription status and redirect accordingly
+        async function handleCTAClick(event) {
+            event.preventDefault();
+
+            try {
+                const response = await fetch(`${API_URL}/api/auth/me`, {
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const user = data.user;
+
+                    // If user is subscribed, take them directly to the app
+                    if (user.subscription_status === 'active' || user.subscription_status === 'premium') {
+                        window.location.href = '/app.html';
+                    } else {
+                        // User is logged in but not subscribed, take them to subscribe page
+                        window.location.href = '/subscribe.html';
+                    }
+                } else {
+                    // User not authenticated, take them to subscribe page
+                    window.location.href = '/subscribe.html';
+                }
+            } catch (error) {
+                // Network error, default to subscribe page
+                window.location.href = '/subscribe.html';
+            }
+        }
 
         async function cancelSubscription() {
             // Show confirmation dialog
