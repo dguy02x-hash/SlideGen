@@ -652,8 +652,18 @@ def forgot_password():
             <h2 style="color: #f59e0b;">Password Reset Request</h2>
             <p>We received a request to reset your password for your PresPilot account.</p>
             <p>Click the button below to reset your password:</p>
-            <p><a href="{reset_url}" style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Reset Password</a></p>
+            <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
+                <tr>
+                    <td align="center" style="background-color: #f59e0b; border-radius: 6px;">
+                        <a href="{reset_url}" target="_blank" style="font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none; padding: 14px 28px; display: inline-block;">
+                            Reset Password
+                        </a>
+                    </td>
+                </tr>
+            </table>
             <p style="color: #666; font-size: 14px;">This link will expire in 1 hour.</p>
+            <p style="color: #666; font-size: 14px;">If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="color: #0066cc; font-size: 12px; word-break: break-all;"><a href="{reset_url}" style="color: #0066cc;">{reset_url}</a></p>
             <p style="color: #666; font-size: 14px;">If you didn't request this password reset, you can safely ignore this email. Your password will not be changed.</p>
         </div>
         '''
