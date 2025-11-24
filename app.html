@@ -1510,6 +1510,19 @@
 
                 console.log('✓ Download triggered successfully');
 
+                // Refresh user data to update generations counter
+                fetch(`${API_URL}/api/auth/me`, {
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.user) {
+                        currentUser = data.user;
+                        updateGenerationsDisplay();
+                    }
+                })
+                .catch(err => console.error('Failed to refresh user data:', err));
+
                 // Show success and go back to complete page
                 showPage('complete-page');
                 showSuccessModal('PowerPoint presentation downloaded successfully!');
