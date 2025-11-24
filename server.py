@@ -650,24 +650,52 @@ def forgot_password():
         reset_url = f"{base_url}/reset-password.html?token={reset_token}"
 
         html_content = f'''
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #f59e0b;">Password Reset Request</h2>
-            <p>We received a request to reset your password for your PresPilot account.</p>
-            <p>Click the button below to reset your password:</p>
-            <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 20px 0;">
                 <tr>
-                    <td align="center" style="background-color: #f59e0b; border-radius: 6px;">
-                        <a href="{reset_url}" target="_blank" style="font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none; padding: 14px 28px; display: inline-block;">
-                            Reset Password
-                        </a>
+                    <td align="center">
+                        <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; padding: 40px 30px; border-radius: 8px;">
+                            <tr>
+                                <td>
+                                    <h2 style="color: #f59e0b; margin: 0 0 20px 0; font-size: 24px;">Password Reset Request</h2>
+                                    <p style="color: #333333; font-size: 16px; line-height: 1.5; margin: 0 0 15px 0;">We received a request to reset your password for your PresPilot account.</p>
+                                    <p style="color: #333333; font-size: 16px; line-height: 1.5; margin: 0 0 25px 0;">Click the button below to reset your password:</p>
+
+                                    <!-- Button -->
+                                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 25px 0;">
+                                        <tr>
+                                            <td align="center" style="padding: 0;">
+                                                <table cellpadding="0" cellspacing="0" border="0">
+                                                    <tr>
+                                                        <td align="center" style="background-color: #f59e0b; border-radius: 6px; padding: 0;">
+                                                            <a href="{reset_url}" target="_blank" style="display: inline-block; padding: 16px 40px; font-size: 18px; font-weight: bold; color: #ffffff; text-decoration: none; border-radius: 6px;">Reset Password</a>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0 0 10px 0;">This link will expire in 1 hour.</p>
+                                    <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0 0 15px 0; font-weight: bold;">If the button doesn't work, click this link or copy and paste it into your browser:</p>
+                                    <p style="margin: 0 0 25px 0; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #f59e0b; word-break: break-all;">
+                                        <a href="{reset_url}" style="color: #0066cc; font-size: 14px; text-decoration: underline;">{reset_url}</a>
+                                    </p>
+                                    <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0;">If you didn't request this password reset, you can safely ignore this email. Your password will not be changed.</p>
+                                </td>
+                            </tr>
+                        </table>
                     </td>
                 </tr>
             </table>
-            <p style="color: #666; font-size: 14px;">This link will expire in 1 hour.</p>
-            <p style="color: #666; font-size: 14px;">If the button doesn't work, copy and paste this link into your browser:</p>
-            <p style="color: #0066cc; font-size: 12px; word-break: break-all;"><a href="{reset_url}" style="color: #0066cc;">{reset_url}</a></p>
-            <p style="color: #666; font-size: 14px;">If you didn't request this password reset, you can safely ignore this email. Your password will not be changed.</p>
-        </div>
+        </body>
+        </html>
         '''
 
         email_sent = send_email(email, 'Reset Your PresPilot Password', html_content)
