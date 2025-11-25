@@ -1770,26 +1770,40 @@ class ThemeGenerator:
         # Load background image based on layout type (SWAPPED: Body 2 first, then Body 1)
         if layout_type == "left":
             self._add_background_image(slide, "Notepad and Folder Body 2.JPG")
-        else:  # right
+        else:  # right (Body 1)
             self._add_background_image(slide, "Notepad and Folder Body 1.JPG")
 
-        # Title - dark brown text with Caveat font
-        title_box = slide.shapes.add_textbox(
-            Inches(0.5), Inches(0.5), Inches(5), Inches(0.8)
-        )
-        tf = title_box.text_frame
-        tf.word_wrap = True
-        p = tf.paragraphs[0]
-        p.text = title
-        p.font.name = self.theme["title_font"]
-        p.font.size = Pt(44)
-        p.font.bold = True
-        p.font.color.rgb = self.theme["text_color"]
-        p.alignment = PP_ALIGN.LEFT
+        # Title positioning differs for Body 1 vs Body 2
+        if layout_type == "right":  # Body 1: Title at top center
+            title_box = slide.shapes.add_textbox(
+                Inches(1.5), Inches(0.3), Inches(7), Inches(0.8)
+            )
+            tf = title_box.text_frame
+            tf.word_wrap = True
+            p = tf.paragraphs[0]
+            p.text = title
+            p.font.name = self.theme["title_font"]
+            p.font.size = Pt(44)
+            p.font.bold = True
+            p.font.color.rgb = self.theme["text_color"]
+            p.alignment = PP_ALIGN.CENTER  # Center aligned for Body 1
+        else:  # Body 2: Title at top left (original position)
+            title_box = slide.shapes.add_textbox(
+                Inches(0.5), Inches(0.5), Inches(5), Inches(0.8)
+            )
+            tf = title_box.text_frame
+            tf.word_wrap = True
+            p = tf.paragraphs[0]
+            p.text = title
+            p.font.name = self.theme["title_font"]
+            p.font.size = Pt(44)
+            p.font.bold = True
+            p.font.color.rgb = self.theme["text_color"]
+            p.alignment = PP_ALIGN.LEFT
 
         # Content placement based on layout (NO BLANK IMAGE PLACEHOLDERS)
         if layout_type == "left":
-            # Bullets on right - dark brown text with Caveat font
+            # Body 2: Bullets on right - dark brown text with Caveat font
             y_pos = 2
             for i, bullet in enumerate(bullets[:4]):
                 bullet_box = slide.shapes.add_textbox(
@@ -1806,13 +1820,14 @@ class ThemeGenerator:
                 p.alignment = PP_ALIGN.LEFT
                 y_pos += 1.1
 
-        else:  # right
-            # Bullets on left - dark brown text with Caveat font
-            y_pos = 2
+        else:  # right (Body 1)
+            # Body 1: Bullets on left - tilted 4 degrees, shifted down
+            y_pos = 2.5  # Shifted down from 2
             for i, bullet in enumerate(bullets[:4]):
                 bullet_box = slide.shapes.add_textbox(
                     Inches(0.8), Inches(y_pos), Inches(5), Inches(0.8)
                 )
+                bullet_box.rotation = 4.0  # Tilt 4 degrees to the right
                 tf = bullet_box.text_frame
                 tf.word_wrap = True
                 p = tf.paragraphs[0]
