@@ -78,6 +78,14 @@ if not SENDGRID_API_KEY:
 else:
     logger.info("✅ SendGrid configured")
 
+# Tavily Search API configuration (optional - for up-to-date research)
+TAVILY_API_KEY = os.environ.get('TAVILY_API_KEY')
+
+if not TAVILY_API_KEY:
+    logger.warning("⚠️  TAVILY_API_KEY not configured - research will use AI knowledge only")
+else:
+    logger.info("✅ Tavily Search configured for up-to-date research")
+
 # Database initialization
 DB_PATH = 'slidegen.db'
 
@@ -443,6 +451,41 @@ def call_anthropic(prompt, max_tokens=2000, max_retries=6):
             raise
 
     raise Exception("Max retries exceeded")
+
+def search_tavily(query, max_results=5):
+    """
+    Optional: Search web using Tavily API for up-to-date information.
+    Returns list of search results or empty list if unavailable/fails.
+    """
+    if not TAVILY_API_KEY:
+        logger.debug("Tavily not configured, skipping web search")
+        return []
+
+    try:
+        response = requests.post(
+            "https://api.tavily.com/search",
+            json={
+                "api_key": TAVILY_API_KEY,
+                "query": query,
+                "max_results": max_results,
+                "search_depth": "basic",
+                "include_answer": True,
+                "include_raw_content": False
+            },
+            timeout=10
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            logger.info(f"✅ Tavily search successful for: {query[:50]}")
+            return data.get('results', [])
+        else:
+            logger.warning(f"Tavily search failed: {response.status_code}")
+            return []
+
+    except Exception as e:
+        logger.warning(f"Tavily search error (continuing without): {str(e)}")
+        return []
 
 def proofread_speaker_notes(notes_text, max_tokens=2200):
     """
@@ -1270,11 +1313,30 @@ def research_topic():
             return jsonify({'error': 'Topic is required'}), 400
         
         logger.info(f"User {user_id} researching: {topic[:50]}")
-        
-        # Generate outline
+
+        # Optional: Search web for up-to-date information (doesn't break if unavailable)
+        web_context = ""
+        search_results = search_tavily(topic, max_results=3)
+
+        if search_results:
+            # Format search results for inclusion in prompt
+            web_info = []
+            for idx, result in enumerate(search_results[:3], 1):
+                title = result.get('title', 'No title')
+                content = result.get('content', '')[:300]  # Limit content length
+                web_info.append(f"{idx}. {title}\n   {content}")
+
+            web_context = f"""
+CURRENT WEB INFORMATION (use this to ensure accuracy and recency):
+{chr(10).join(web_info)}
+
+"""
+            logger.info(f"Including web search context from {len(search_results)} sources")
+
+        # Generate outline (with optional web context)
         prompt = f"""Create a detailed outline for a {num_slides}-slide presentation on: {topic}
 
-CRITICAL REQUIREMENTS:
+{web_context}CRITICAL REQUIREMENTS:
 1. Create EXACTLY {num_slides} sections (one per slide)
 2. Each section title must be VERY SHORT - MAXIMUM 2 WORDS (like "Overview", "Key Benefits", "Statistics", "Implementation", "Results")
 3. Each section must have 3-4 key points
