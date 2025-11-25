@@ -1774,7 +1774,7 @@ class ThemeGenerator:
             self._add_background_image(slide, "Notepad and Folder Body 1.JPG")
 
         # Title positioning differs for Body 1 vs Body 2
-        if layout_type == "right":  # Body 1: Title at top center
+        if layout_type == "right":  # Body 1: Title at top center, larger size
             title_box = slide.shapes.add_textbox(
                 Inches(1.5), Inches(0.3), Inches(7), Inches(0.8)
             )
@@ -1783,11 +1783,11 @@ class ThemeGenerator:
             p = tf.paragraphs[0]
             p.text = title
             p.font.name = self.theme["title_font"]
-            p.font.size = Pt(44)
+            p.font.size = Pt(52)  # Increased from 44
             p.font.bold = True
             p.font.color.rgb = self.theme["text_color"]
             p.alignment = PP_ALIGN.CENTER  # Center aligned for Body 1
-        else:  # Body 2: Title at top left (original position)
+        else:  # Body 2: Title at top left, larger size
             title_box = slide.shapes.add_textbox(
                 Inches(0.5), Inches(0.5), Inches(5), Inches(0.8)
             )
@@ -1796,19 +1796,20 @@ class ThemeGenerator:
             p = tf.paragraphs[0]
             p.text = title
             p.font.name = self.theme["title_font"]
-            p.font.size = Pt(44)
+            p.font.size = Pt(52)  # Increased from 44
             p.font.bold = True
             p.font.color.rgb = self.theme["text_color"]
             p.alignment = PP_ALIGN.LEFT
 
         # Content placement based on layout (NO BLANK IMAGE PLACEHOLDERS)
         if layout_type == "left":
-            # Body 2: Bullets on right - dark brown text with Caveat font
-            y_pos = 2
+            # Body 2: Bullets on right - tilted 4 degrees right, shifted down
+            y_pos = 2.5  # Shifted down to match Body 1
             for i, bullet in enumerate(bullets[:4]):
                 bullet_box = slide.shapes.add_textbox(
                     Inches(4.5), Inches(y_pos), Inches(5), Inches(0.8)
                 )
+                bullet_box.rotation = 4.0  # Tilt 4 degrees to the right
                 tf = bullet_box.text_frame
                 tf.word_wrap = True
                 p = tf.paragraphs[0]
@@ -1821,13 +1822,13 @@ class ThemeGenerator:
                 y_pos += 1.1
 
         else:  # right (Body 1)
-            # Body 1: Bullets on left - tilted 4 degrees, shifted down
+            # Body 1: Bullets on left - tilted 4 degrees LEFT, shifted down
             y_pos = 2.5  # Shifted down from 2
             for i, bullet in enumerate(bullets[:4]):
                 bullet_box = slide.shapes.add_textbox(
                     Inches(0.8), Inches(y_pos), Inches(5), Inches(0.8)
                 )
-                bullet_box.rotation = 4.0  # Tilt 4 degrees to the right
+                bullet_box.rotation = -4.0  # Tilt 4 degrees to the LEFT
                 tf = bullet_box.text_frame
                 tf.word_wrap = True
                 p = tf.paragraphs[0]
