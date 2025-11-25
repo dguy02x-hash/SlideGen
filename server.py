@@ -1618,6 +1618,25 @@ def generate_pptx():
         from flask import send_file
         import tempfile
 
+        # Check generations limit BEFORE generating
+        user_id = session.get('user_id', 'anonymous')
+
+        if user_id != 'anonymous':
+            # Check if user has generations remaining
+            if not check_generations_limit(user_id):
+                conn = get_db()
+                cursor = conn.cursor()
+                user = cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+                conn.close()
+
+                return jsonify({
+                    'error': 'Generation limit reached for this month',
+                    'limit_reached': True,
+                    'subscription_status': user['subscription_status'],
+                    'generations_used': user['generations_used'],
+                    'generations_limit': user['generations_limit']
+                }), 403
+
         data = request.json
         title = data.get('title', 'Presentation')
         topic = data.get('topic', '')
@@ -1719,7 +1738,6 @@ Speaker notes:"""
             )
 
             # Increment generation count ONLY after successful generation
-            user_id = session.get('user_id', 'anonymous')
             if user_id != 'anonymous':
                 increment_generation_count(user_id)
                 logger.info(f"User {user_id} successfully generated presentation: {title}")
