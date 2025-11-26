@@ -1888,7 +1888,7 @@ class ThemeGenerator:
         self.layout_index += 1
 
     def _add_paperback_green_content(self, slide, title, bullets):
-        """Paperback Green theme: Minimalist Gray layout with green background images and white text"""
+        """Paperback Green theme: Green background with white text, 4 bullets, and image placeholder"""
         # Get current layout (alternates between Body 1 and Body 2)
         layout_type = self.theme["layouts"][self.layout_index % len(self.theme["layouts"])]
 
@@ -1898,43 +1898,45 @@ class ThemeGenerator:
         else:  # body2
             self._add_background_image(slide, "Paperback Green Body 2.jpg")
 
-        # Title - italic with underline (Minimalist Gray style)
+        # Title - white text, Times New Roman
         title_box = slide.shapes.add_textbox(
-            Inches(0.5), Inches(0.8), Inches(5), Inches(0.8)
+            Inches(0.5), Inches(0.5), Inches(5), Inches(0.8)
         )
         tf = title_box.text_frame
         tf.word_wrap = True
         p = tf.paragraphs[0]
         p.text = title
         p.font.name = self.theme["title_font"]
-        p.font.size = Pt(48)
-        p.font.italic = True
+        p.font.size = Pt(44)
+        p.font.bold = True
         p.font.color.rgb = self.theme["text_color"]  # White
         p.alignment = PP_ALIGN.LEFT
 
-        # Underline below title (white)
-        line = slide.shapes.add_shape(
-            MSO_SHAPE.RECTANGLE,
-            Inches(0.5), Inches(1.65), Inches(5.5), Pt(2)
-        )
-        line.fill.solid()
-        line.fill.fore_color.rgb = self.theme["text_color"]  # White
-        line.line.fill.background()
-
-        # Bullet points on left (white text)
-        y_pos = 2.3
-        for i, bullet in enumerate(bullets[:3]):
+        # 4 Bullet points on left (white text, Times New Roman)
+        y_pos = 1.8
+        for i, bullet in enumerate(bullets[:4]):
             bullet_box = slide.shapes.add_textbox(
-                Inches(0.8), Inches(y_pos), Inches(4.5), Inches(0.6)
+                Inches(0.5), Inches(y_pos), Inches(4.5), Inches(0.7)
             )
             tf = bullet_box.text_frame
+            tf.word_wrap = True
             p = tf.paragraphs[0]
             p.text = f"• {bullet}"
             p.font.name = self.theme["font"]
-            p.font.size = Pt(24)
+            p.font.size = Pt(22)
             p.font.color.rgb = self.theme["text_color"]  # White
             p.alignment = PP_ALIGN.LEFT
-            y_pos += 1.1
+            y_pos += 1.2
+
+        # Image placeholder on right (light gray for visibility on green)
+        img_box = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            Inches(5.5), Inches(1.5), Inches(4), Inches(5)
+        )
+        img_box.fill.solid()
+        img_box.fill.fore_color.rgb = RGBColor(220, 220, 220)  # Light gray placeholder
+        img_box.line.color.rgb = RGBColor(255, 255, 255)  # White border
+        img_box.line.width = Pt(2)
 
         # Increment layout index for next slide
         self.layout_index += 1
