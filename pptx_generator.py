@@ -1773,22 +1773,8 @@ class ThemeGenerator:
         else:  # right (Body 1)
             self._add_background_image(slide, "Notepad and Folder Body 1.JPG")
 
-        # Title positioning differs for Body 1 vs Body 2
-        if layout_type == "right":  # Body 1: Exact positioning
-            # Topic heading: Font 32, Left 3.25", Top 0.75"
-            title_box = slide.shapes.add_textbox(
-                Inches(3.25), Inches(0.75), Inches(6), Inches(0.8)
-            )
-            tf = title_box.text_frame
-            tf.word_wrap = True
-            p = tf.paragraphs[0]
-            p.text = title
-            p.font.name = self.theme["title_font"]
-            p.font.size = Pt(32)
-            p.font.bold = True
-            p.font.color.rgb = self.theme["text_color"]
-            p.alignment = PP_ALIGN.LEFT
-        else:  # Body 2: Exact positioning
+        # Title positioning differs for Body 1 vs Body 2 (SWAPPED)
+        if layout_type == "right":  # Body 1: Exact positioning (SWAPPED)
             # Topic heading: Font 32, Left 1.5", Top 0.1"
             title_box = slide.shapes.add_textbox(
                 Inches(1.5), Inches(0.1), Inches(6), Inches(0.8)
@@ -1802,36 +1788,24 @@ class ThemeGenerator:
             p.font.bold = True
             p.font.color.rgb = self.theme["text_color"]
             p.alignment = PP_ALIGN.LEFT
+        else:  # Body 2: Exact positioning (SWAPPED)
+            # Topic heading: Font 32, Left 3.25", Top 0.75"
+            title_box = slide.shapes.add_textbox(
+                Inches(3.25), Inches(0.75), Inches(6), Inches(0.8)
+            )
+            tf = title_box.text_frame
+            tf.word_wrap = True
+            p = tf.paragraphs[0]
+            p.text = title
+            p.font.name = self.theme["title_font"]
+            p.font.size = Pt(32)
+            p.font.bold = True
+            p.font.color.rgb = self.theme["text_color"]
+            p.alignment = PP_ALIGN.LEFT
 
-        # Content placement based on layout with exact positioning
+        # Content placement based on layout with exact positioning (SWAPPED)
         if layout_type == "left":
-            # Body 2: Exact positioning for each bullet, 350 degrees rotation
-            bullet_positions = [
-                (2.47, 1.75),  # Key Point 1
-                (2.7, 3.01),   # Key Point 2
-                (2.93, 4.27),  # Key Point 3
-                (3.16, 5.48)   # Key Point 4
-            ]
-
-            for i, bullet in enumerate(bullets[:4]):
-                if i < len(bullet_positions):
-                    left, top = bullet_positions[i]
-                    bullet_box = slide.shapes.add_textbox(
-                        Inches(left), Inches(top), Inches(5), Inches(0.8)
-                    )
-                    bullet_box.rotation = 350.0  # 350 degrees rotation
-                    tf = bullet_box.text_frame
-                    tf.word_wrap = True
-                    p = tf.paragraphs[0]
-                    p.text = f"• {bullet}"
-                    p.font.name = self.theme["font"]
-                    p.font.size = Pt(22)
-                    p.font.bold = True
-                    p.font.color.rgb = self.theme["text_color"]
-                    p.alignment = PP_ALIGN.LEFT
-
-        else:  # right (Body 1)
-            # Body 1: Exact positioning for each bullet
+            # Body 2: Exact positioning for each bullet (SWAPPED - no rotation)
             bullet_positions = [
                 (3.75, 2.13),  # Key Point 1
                 (3.77, 3.53),  # Key Point 2
@@ -1845,6 +1819,33 @@ class ThemeGenerator:
                     bullet_box = slide.shapes.add_textbox(
                         Inches(left), Inches(top), Inches(5), Inches(0.8)
                     )
+                    # No rotation for Body 2 now
+                    tf = bullet_box.text_frame
+                    tf.word_wrap = True
+                    p = tf.paragraphs[0]
+                    p.text = f"• {bullet}"
+                    p.font.name = self.theme["font"]
+                    p.font.size = Pt(22)
+                    p.font.bold = True
+                    p.font.color.rgb = self.theme["text_color"]
+                    p.alignment = PP_ALIGN.LEFT
+
+        else:  # right (Body 1)
+            # Body 1: Exact positioning for each bullet, 350 degrees rotation (SWAPPED)
+            bullet_positions = [
+                (2.47, 1.75),  # Key Point 1
+                (2.7, 3.01),   # Key Point 2
+                (2.93, 4.27),  # Key Point 3
+                (3.16, 5.48)   # Key Point 4
+            ]
+
+            for i, bullet in enumerate(bullets[:4]):
+                if i < len(bullet_positions):
+                    left, top = bullet_positions[i]
+                    bullet_box = slide.shapes.add_textbox(
+                        Inches(left), Inches(top), Inches(5), Inches(0.8)
+                    )
+                    bullet_box.rotation = 350.0  # 350 degrees rotation for Body 1 now
                     tf = bullet_box.text_frame
                     tf.word_wrap = True
                     p = tf.paragraphs[0]
