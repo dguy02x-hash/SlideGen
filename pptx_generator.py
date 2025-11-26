@@ -732,9 +732,9 @@ class ThemeGenerator:
             # Load title background image
             self._add_background_image(slide, "Notepad and Folder Title.JPG")
 
-            # Title - centered, dark brown text, Caveat font
+            # Title - exact positioning: Left 1", Top 1.4"
             title_box = slide.shapes.add_textbox(
-                Inches(1), Inches(2.5), Inches(8), Inches(1.5)
+                Inches(1), Inches(1.4), Inches(8), Inches(1.5)
             )
             tf = title_box.text_frame
             tf.word_wrap = True
@@ -747,9 +747,9 @@ class ThemeGenerator:
             p.font.color.rgb = self.theme["text_color"]
             p.alignment = PP_ALIGN.CENTER
 
-            # Subtitle - centered below title, dark brown text, Caveat font
+            # Subtitle - exact positioning: Left 0.35", Top 5.75"
             by_box = slide.shapes.add_textbox(
-                Inches(1), Inches(4.2), Inches(8), Inches(0.7)
+                Inches(0.35), Inches(5.75), Inches(9), Inches(0.7)
             )
             tf = by_box.text_frame
             p = tf.paragraphs[0]
@@ -757,7 +757,7 @@ class ThemeGenerator:
             p.font.name = self.theme["font"]
             p.font.size = Pt(32)
             p.font.color.rgb = self.theme["text_color"]
-            p.alignment = PP_ALIGN.CENTER
+            p.alignment = PP_ALIGN.LEFT
 
         elif self.theme_name == "Ocean Blue":
             # Blue background
@@ -1774,71 +1774,86 @@ class ThemeGenerator:
             self._add_background_image(slide, "Notepad and Folder Body 1.JPG")
 
         # Title positioning differs for Body 1 vs Body 2
-        if layout_type == "right":  # Body 1: Title at top center, larger size
+        if layout_type == "right":  # Body 1: Exact positioning
+            # Topic heading: Font 32, Left 3.25", Top 0.75"
             title_box = slide.shapes.add_textbox(
-                Inches(1.5), Inches(0.3), Inches(7), Inches(0.8)
+                Inches(3.25), Inches(0.75), Inches(6), Inches(0.8)
             )
             tf = title_box.text_frame
             tf.word_wrap = True
             p = tf.paragraphs[0]
             p.text = title
             p.font.name = self.theme["title_font"]
-            p.font.size = Pt(52)  # Increased from 44
+            p.font.size = Pt(32)
             p.font.bold = True
             p.font.color.rgb = self.theme["text_color"]
-            p.alignment = PP_ALIGN.CENTER  # Center aligned for Body 1
-        else:  # Body 2: Title at top left, larger size
+            p.alignment = PP_ALIGN.LEFT
+        else:  # Body 2: Exact positioning
+            # Topic heading: Font 32, Left 1.5", Top 0.1"
             title_box = slide.shapes.add_textbox(
-                Inches(0.5), Inches(0.5), Inches(5), Inches(0.8)
+                Inches(1.5), Inches(0.1), Inches(6), Inches(0.8)
             )
             tf = title_box.text_frame
             tf.word_wrap = True
             p = tf.paragraphs[0]
             p.text = title
             p.font.name = self.theme["title_font"]
-            p.font.size = Pt(52)  # Increased from 44
+            p.font.size = Pt(32)
             p.font.bold = True
             p.font.color.rgb = self.theme["text_color"]
             p.alignment = PP_ALIGN.LEFT
 
-        # Content placement based on layout (NO BLANK IMAGE PLACEHOLDERS)
+        # Content placement based on layout with exact positioning
         if layout_type == "left":
-            # Body 2: Bullets on right - tilted 4 degrees right, shifted down
-            y_pos = 2.5  # Shifted down to match Body 1
+            # Body 2: Exact positioning for each bullet, 350 degrees rotation
+            bullet_positions = [
+                (2.47, 1.75),  # Key Point 1
+                (2.7, 3.01),   # Key Point 2
+                (2.93, 4.27),  # Key Point 3
+                (3.16, 5.48)   # Key Point 4
+            ]
+
             for i, bullet in enumerate(bullets[:4]):
-                bullet_box = slide.shapes.add_textbox(
-                    Inches(4.5), Inches(y_pos), Inches(5), Inches(0.8)
-                )
-                bullet_box.rotation = 4.0  # Tilt 4 degrees to the right
-                tf = bullet_box.text_frame
-                tf.word_wrap = True
-                p = tf.paragraphs[0]
-                p.text = f"• {bullet}"
-                p.font.name = self.theme["font"]
-                p.font.size = Pt(22)
-                p.font.bold = True
-                p.font.color.rgb = self.theme["text_color"]
-                p.alignment = PP_ALIGN.LEFT
-                y_pos += 1.1
+                if i < len(bullet_positions):
+                    left, top = bullet_positions[i]
+                    bullet_box = slide.shapes.add_textbox(
+                        Inches(left), Inches(top), Inches(5), Inches(0.8)
+                    )
+                    bullet_box.rotation = 350.0  # 350 degrees rotation
+                    tf = bullet_box.text_frame
+                    tf.word_wrap = True
+                    p = tf.paragraphs[0]
+                    p.text = f"• {bullet}"
+                    p.font.name = self.theme["font"]
+                    p.font.size = Pt(22)
+                    p.font.bold = True
+                    p.font.color.rgb = self.theme["text_color"]
+                    p.alignment = PP_ALIGN.LEFT
 
         else:  # right (Body 1)
-            # Body 1: Bullets on left - tilted 4 degrees LEFT, shifted down
-            y_pos = 2.5  # Shifted down from 2
+            # Body 1: Exact positioning for each bullet
+            bullet_positions = [
+                (3.75, 2.13),  # Key Point 1
+                (3.77, 3.53),  # Key Point 2
+                (3.77, 4.83),  # Key Point 3
+                (3.77, 6.23)   # Key Point 4
+            ]
+
             for i, bullet in enumerate(bullets[:4]):
-                bullet_box = slide.shapes.add_textbox(
-                    Inches(0.8), Inches(y_pos), Inches(5), Inches(0.8)
-                )
-                bullet_box.rotation = -4.0  # Tilt 4 degrees to the LEFT
-                tf = bullet_box.text_frame
-                tf.word_wrap = True
-                p = tf.paragraphs[0]
-                p.text = f"• {bullet}"
-                p.font.name = self.theme["font"]
-                p.font.size = Pt(22)
-                p.font.bold = True
-                p.font.color.rgb = self.theme["text_color"]
-                p.alignment = PP_ALIGN.LEFT
-                y_pos += 1.1
+                if i < len(bullet_positions):
+                    left, top = bullet_positions[i]
+                    bullet_box = slide.shapes.add_textbox(
+                        Inches(left), Inches(top), Inches(5), Inches(0.8)
+                    )
+                    tf = bullet_box.text_frame
+                    tf.word_wrap = True
+                    p = tf.paragraphs[0]
+                    p.text = f"• {bullet}"
+                    p.font.name = self.theme["font"]
+                    p.font.size = Pt(22)
+                    p.font.bold = True
+                    p.font.color.rgb = self.theme["text_color"]
+                    p.alignment = PP_ALIGN.LEFT
 
         # Increment layout index for next slide
         self.layout_index += 1
