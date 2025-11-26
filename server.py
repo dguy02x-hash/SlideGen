@@ -1813,8 +1813,11 @@ Speaker notes:"""
             )
 
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
         logger.error(f"PPTX generation error: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Full traceback: {error_details}")
+        return jsonify({'error': f'Generation failed: {str(e)}'}), 500
 
 # ============= Static File Serving =============
 
