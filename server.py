@@ -267,14 +267,8 @@ def send_confirmation_email(to_email, confirmation_token):
                                 <!-- Button -->
                                 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 25px 0;">
                                     <tr>
-                                        <td align="center">
-                                            <table cellpadding="0" cellspacing="0" border="0">
-                                                <tr>
-                                                    <td align="center" bgcolor="#f59e0b" style="border-radius: 6px;">
-                                                        <a href="{confirmation_url}" target="_blank" style="display: inline-block; padding: 16px 40px; font-size: 18px; font-weight: bold; color: #ffffff; text-decoration: none; border-radius: 6px;">Confirm Email & Create Password</a>
-                                                    </td>
-                                                </tr>
-                                            </table>
+                                        <td align="center" style="padding: 0;">
+                                            <a href="{confirmation_url}" target="_blank" style="display: inline-block; padding: 16px 40px; font-size: 18px; font-weight: bold; color: #ffffff !important; text-decoration: none; background-color: #f59e0b; border-radius: 6px; mso-padding-alt: 0; text-align: center;">Confirm Email & Create Password</a>
                                         </td>
                                     </tr>
                                 </table>
@@ -766,14 +760,8 @@ def forgot_password():
                                     <!-- Button -->
                                     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 25px 0;">
                                         <tr>
-                                            <td align="center">
-                                                <table cellpadding="0" cellspacing="0" border="0">
-                                                    <tr>
-                                                        <td align="center" bgcolor="#f59e0b" style="border-radius: 6px;">
-                                                            <a href="{reset_url}" target="_blank" style="display: inline-block; padding: 16px 40px; font-size: 18px; font-weight: bold; color: #ffffff; text-decoration: none; border-radius: 6px;">Reset Password</a>
-                                                        </td>
-                                                    </tr>
-                                                </table>
+                                            <td align="center" style="padding: 0;">
+                                                <a href="{reset_url}" target="_blank" style="display: inline-block; padding: 16px 40px; font-size: 18px; font-weight: bold; color: #ffffff !important; text-decoration: none; background-color: #f59e0b; border-radius: 6px; mso-padding-alt: 0; text-align: center;">Reset Password</a>
                                             </td>
                                         </tr>
                                     </table>
