@@ -1845,7 +1845,7 @@ class ThemeGenerator:
                     bullet_box = slide.shapes.add_textbox(
                         Inches(left), Inches(top), Inches(5), Inches(0.8)
                     )
-                    bullet_box.rotation = 350.0  # 350 degrees rotation for Body 1 now
+                    bullet_box.rotation = -10.0  # -10 degrees (same as 350) for Body 1
                     tf = bullet_box.text_frame
                     tf.word_wrap = True
                     p = tf.paragraphs[0]
