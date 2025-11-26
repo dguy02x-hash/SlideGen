@@ -1766,26 +1766,27 @@ Speaker notes:"""
                         # Fallback: Just join the facts
                         section['custom_notes'] = ' '.join(section['facts'])
 
-        # Grammar check ALL slide titles and bullets for all themes
-        logger.info("Grammar checking slide text (titles and bullets)")
-        for section in sections:
-            # Proofread slide title
-            if 'title' in section and section['title']:
-                try:
-                    section['title'] = proofread_slide_text(section['title'])
-                except Exception as e:
-                    logger.warning(f"Failed to proofread title: {e}")
-
-            # Proofread bullets/facts
-            if 'facts' in section and section['facts']:
-                proofread_facts = []
-                for fact in section['facts']:
-                    try:
-                        proofread_facts.append(proofread_slide_text(fact))
-                    except Exception as e:
-                        logger.warning(f"Failed to proofread bullet: {e}")
-                        proofread_facts.append(fact)  # Use original if proofreading fails
-                section['facts'] = proofread_facts
+        # Grammar check disabled temporarily - was causing worker crashes due to too many AI calls
+        # TODO: Re-implement with batching or make it optional
+        # logger.info("Grammar checking slide text (titles and bullets)")
+        # for section in sections:
+        #     # Proofread slide title
+        #     if 'title' in section and section['title']:
+        #         try:
+        #             section['title'] = proofread_slide_text(section['title'])
+        #         except Exception as e:
+        #             logger.warning(f"Failed to proofread title: {e}")
+        #
+        #     # Proofread bullets/facts
+        #     if 'facts' in section and section['facts']:
+        #         proofread_facts = []
+        #         for fact in section['facts']:
+        #             try:
+        #                 proofread_facts.append(proofread_slide_text(fact))
+        #             except Exception as e:
+        #                 logger.warning(f"Failed to proofread bullet: {e}")
+        #                 proofread_facts.append(fact)  # Use original if proofreading fails
+        #         section['facts'] = proofread_facts
 
         # Generate presentation in temp file
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pptx') as tmp:
