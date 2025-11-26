@@ -155,6 +155,16 @@ class ThemeGenerator:
             "font": "Caveat",
             "title_font": "Caveat",
             "layouts": ["left", "right"]  # 2 body slide layouts
+        },
+        "Paperback Green": {
+            "primary_color": RGBColor(255, 255, 255),  # White
+            "secondary_color": RGBColor(255, 255, 255),  # White
+            "text_color": RGBColor(255, 255, 255),  # White text
+            "accent_color": RGBColor(255, 255, 255),  # White
+            "background": RGBColor(34, 139, 34),  # Green (fallback)
+            "font": "Times New Roman",
+            "title_font": "Times New Roman",
+            "layouts": ["body1", "body2"]  # 2 body slide layouts
         }
     }
     
@@ -759,6 +769,38 @@ class ThemeGenerator:
             p.font.color.rgb = self.theme["text_color"]
             p.alignment = PP_ALIGN.CENTER
 
+        elif self.theme_name == "Paperback Green":
+            # Load Paperback Green title background image
+            self._add_background_image(slide, "Paperback Green Title and Thank You.jpg")
+
+            # Title - white text, italic, Times New Roman
+            title_box = slide.shapes.add_textbox(
+                Inches(0.5), Inches(2), Inches(9), Inches(1.5)
+            )
+            tf = title_box.text_frame
+            tf.word_wrap = True
+            tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+            p = tf.paragraphs[0]
+            p.text = title
+            p.font.name = self.theme["title_font"]
+            p.font.size = Pt(60)
+            p.font.italic = True
+            p.font.bold = True
+            p.font.color.rgb = self.theme["text_color"]  # White
+            p.alignment = PP_ALIGN.CENTER
+
+            # Subtitle - white text, Times New Roman
+            by_box = slide.shapes.add_textbox(
+                Inches(1), Inches(4.5), Inches(8), Inches(0.7)
+            )
+            tf = by_box.text_frame
+            p = tf.paragraphs[0]
+            p.text = f"Presented by {presenter_name}"
+            p.font.name = self.theme["font"]
+            p.font.size = Pt(28)
+            p.font.color.rgb = self.theme["text_color"]  # White
+            p.alignment = PP_ALIGN.CENTER
+
         elif self.theme_name == "Ocean Blue":
             # Blue background
             bg = slide.shapes.add_shape(
@@ -1000,6 +1042,8 @@ class ThemeGenerator:
             self._add_iridiscent_glow_content(slide, title, bullets)
         elif self.theme_name == "Notepad and Folder":
             self._add_notepad_and_folder_content(slide, title, bullets)
+        elif self.theme_name == "Paperback Green":
+            self._add_paperback_green_content(slide, title, bullets)
         else:
             # Fallback for any other themes
             self._add_default_content(slide, title, bullets)
@@ -1843,6 +1887,58 @@ class ThemeGenerator:
         # Increment layout index for next slide
         self.layout_index += 1
 
+    def _add_paperback_green_content(self, slide, title, bullets):
+        """Paperback Green theme: Minimalist Gray layout with green background images and white text"""
+        # Get current layout (alternates between Body 1 and Body 2)
+        layout_type = self.theme["layouts"][self.layout_index % len(self.theme["layouts"])]
+
+        # Load background image based on layout type
+        if layout_type == "body1":
+            self._add_background_image(slide, "Paperback Green Body 1.jpg")
+        else:  # body2
+            self._add_background_image(slide, "Paperback Green Body 2.jpg")
+
+        # Title - italic with underline (Minimalist Gray style)
+        title_box = slide.shapes.add_textbox(
+            Inches(0.5), Inches(0.8), Inches(5), Inches(0.8)
+        )
+        tf = title_box.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        p.text = title
+        p.font.name = self.theme["title_font"]
+        p.font.size = Pt(48)
+        p.font.italic = True
+        p.font.color.rgb = self.theme["text_color"]  # White
+        p.alignment = PP_ALIGN.LEFT
+
+        # Underline below title (white)
+        line = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            Inches(0.5), Inches(1.65), Inches(5.5), Pt(2)
+        )
+        line.fill.solid()
+        line.fill.fore_color.rgb = self.theme["text_color"]  # White
+        line.line.fill.background()
+
+        # Bullet points on left (white text)
+        y_pos = 2.3
+        for i, bullet in enumerate(bullets[:3]):
+            bullet_box = slide.shapes.add_textbox(
+                Inches(0.8), Inches(y_pos), Inches(4.5), Inches(0.6)
+            )
+            tf = bullet_box.text_frame
+            p = tf.paragraphs[0]
+            p.text = f"• {bullet}"
+            p.font.name = self.theme["font"]
+            p.font.size = Pt(24)
+            p.font.color.rgb = self.theme["text_color"]  # White
+            p.alignment = PP_ALIGN.LEFT
+            y_pos += 1.1
+
+        # Increment layout index for next slide
+        self.layout_index += 1
+
     def _add_default_content(self, slide, title, bullets):
         """Fallback default layout for themes without specific layouts"""
         # Background
@@ -1925,6 +2021,9 @@ class ThemeGenerator:
         elif self.theme_name == "Notepad and Folder":
             # Load thank you background image
             self._add_background_image(slide, "Notepad and Folder Thank You.jpg")
+        elif self.theme_name == "Paperback Green":
+            # Load thank you background image (same as title)
+            self._add_background_image(slide, "Paperback Green Title and Thank You.jpg")
         else:
             # Solid background for other themes
             bg = slide.shapes.add_shape(
@@ -1960,6 +2059,8 @@ class ThemeGenerator:
             p.font.color.rgb = RGBColor(50, 50, 50)  # Dark grey
         elif self.theme_name == "Notepad and Folder":
             p.font.color.rgb = self.theme["text_color"]  # Dark brown
+        elif self.theme_name == "Paperback Green":
+            p.font.color.rgb = self.theme["text_color"]  # White
         else:
             p.font.color.rgb = self.theme["text_color"]
 
