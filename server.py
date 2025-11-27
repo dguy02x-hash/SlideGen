@@ -265,13 +265,9 @@ def send_confirmation_email(to_email, confirmation_token):
                                 <p style="color: #333333; font-size: 16px; line-height: 1.5; margin: 0 0 25px 0;">Thank you for subscribing. Please confirm your email and create your password to get started.</p>
 
                                 <!-- Button -->
-                                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 25px 0;">
-                                    <tr>
-                                        <td align="center" style="padding: 0;">
-                                            <a href="{confirmation_url}" target="_blank" style="display: inline-block; padding: 16px 40px; font-size: 18px; font-weight: bold; color: #ffffff !important; text-decoration: none; background-color: #f59e0b; border-radius: 6px; mso-padding-alt: 0; text-align: center;">Confirm Email & Create Password</a>
-                                        </td>
-                                    </tr>
-                                </table>
+                                <div style="text-align: center; margin: 25px 0;">
+                                    <a href="{confirmation_url}" style="background-color: #f59e0b; color: #ffffff; padding: 16px 40px; text-decoration: none; font-weight: bold; font-size: 18px; display: inline-block; border-radius: 6px;">Confirm Email & Create Password</a>
+                                </div>
 
                                 <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0 0 10px 0;">This link will expire in 24 hours.</p>
                                 <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0 0 15px 0; font-weight: bold;">If the button doesn't work, click this link or copy and paste it into your browser:</p>
@@ -767,13 +763,9 @@ def forgot_password():
                                     <p style="color: #333333; font-size: 16px; line-height: 1.5; margin: 0 0 25px 0;">Click the button below to reset your password:</p>
 
                                     <!-- Button -->
-                                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 25px 0;">
-                                        <tr>
-                                            <td align="center" style="padding: 0;">
-                                                <a href="{reset_url}" target="_blank" style="display: inline-block; padding: 16px 40px; font-size: 18px; font-weight: bold; color: #ffffff !important; text-decoration: none; background-color: #f59e0b; border-radius: 6px; mso-padding-alt: 0; text-align: center;">Reset Password</a>
-                                            </td>
-                                        </tr>
-                                    </table>
+                                    <div style="text-align: center; margin: 25px 0;">
+                                        <a href="{reset_url}" style="background-color: #f59e0b; color: #ffffff; padding: 16px 40px; text-decoration: none; font-weight: bold; font-size: 18px; display: inline-block; border-radius: 6px;">Reset Password</a>
+                                    </div>
 
                                     <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0 0 10px 0;">This link will expire in 1 hour.</p>
                                     <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0 0 15px 0; font-weight: bold;">If the button doesn't work, click this link or copy and paste it into your browser:</p>
