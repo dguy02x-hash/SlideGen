@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Confirm Your Email - PresPilot</title>
+    <title>Verify Your Account - PresPilot</title>
     <style>
         * {
             margin: 0;
@@ -49,6 +49,7 @@
         .header p {
             color: #6b7280;
             font-size: 1rem;
+            line-height: 1.5;
         }
 
         .message {
@@ -99,6 +100,14 @@
         .form-group input:focus {
             outline: none;
             border-color: #f59e0b;
+        }
+
+        .form-group input[type="text"]#code {
+            text-align: center;
+            font-size: 1.5rem;
+            letter-spacing: 8px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
         }
 
         .password-requirements {
@@ -167,31 +176,49 @@
         .back-link a:hover {
             opacity: 1;
         }
+
+        .help-text {
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+            color: #1f2937;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="card">
             <div class="header">
-                <h1>Confirm Your Email</h1>
-                <p>Create your password to complete registration</p>
+                <h1>Verify Your Account</h1>
+                <p>Enter the 6-digit code from your email to create your account</p>
             </div>
 
             <div id="message" class="message hidden"></div>
 
-            <div id="loading-section" class="message info">
-                <p>Verifying your email confirmation link...</p>
+            <div class="help-text">
+                📧 Check your email for a message from PresPilot containing your 6-digit verification code
             </div>
 
-            <form id="password-form" class="hidden">
+            <form id="verification-form">
                 <div class="form-group">
                     <label for="email">Email Address</label>
-                    <input type="email" id="email" name="email" disabled>
+                    <input type="email" id="email" name="email" required placeholder="you@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="code">Verification Code</label>
+                    <input type="text" id="code" name="code" required maxlength="6" placeholder="000000" pattern="[0-9]{6}">
+                    <div class="password-requirements">
+                        Enter the 6-digit code from your email
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label for="password">Create Password</label>
-                    <input type="password" id="password" name="password" required minlength="8">
+                    <input type="password" id="password" name="password" required minlength="8" placeholder="At least 8 characters">
                     <div class="password-requirements">
                         At least 8 characters required
                     </div>
@@ -199,7 +226,7 @@
 
                 <div class="form-group">
                     <label for="confirm-password">Confirm Password</label>
-                    <input type="password" id="confirm-password" name="confirm-password" required minlength="8">
+                    <input type="password" id="confirm-password" name="confirm-password" required minlength="8" placeholder="Re-enter password">
                 </div>
 
                 <button type="submit" id="submit-btn" class="btn">Create Account</button>
@@ -216,17 +243,18 @@
             ? 'http://localhost:5001'
             : window.location.origin;
 
-        let confirmationToken = '';
-
-        // Get token from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        confirmationToken = urlParams.get('token');
-
         const messageDiv = document.getElementById('message');
-        const loadingSection = document.getElementById('loading-section');
-        const passwordForm = document.getElementById('password-form');
+        const verificationForm = document.getElementById('verification-form');
         const emailInput = document.getElementById('email');
+        const codeInput = document.getElementById('code');
         const submitBtn = document.getElementById('submit-btn');
+
+        // Pre-fill email from URL if provided
+        const urlParams = new URLSearchParams(window.location.search);
+        const emailParam = urlParams.get('email');
+        if (emailParam) {
+            emailInput.value = emailParam;
+        }
 
         function showMessage(text, type) {
             messageDiv.textContent = text;
@@ -238,46 +266,25 @@
             messageDiv.classList.add('hidden');
         }
 
-        // Verify token on page load
-        async function verifyToken() {
-            if (!confirmationToken) {
-                loadingSection.classList.add('hidden');
-                showMessage('Invalid or missing confirmation link. Please check your email.', 'error');
-                return;
-            }
+        // Auto-format code input (numbers only)
+        codeInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+        });
 
-            try {
-                const response = await fetch(`${API_URL}/api/auth/verify-email?token=${confirmationToken}`, {
-                    method: 'GET',
-                    credentials: 'include'
-                });
-
-                const data = await response.json();
-
-                if (response.ok && data.valid) {
-                    // Token is valid, show password form
-                    loadingSection.classList.add('hidden');
-                    emailInput.value = data.email;
-                    passwordForm.classList.remove('hidden');
-                    showMessage('Email verified! Please create your password.', 'success');
-                } else {
-                    // Token is invalid or expired
-                    loadingSection.classList.add('hidden');
-                    showMessage(data.error || 'Invalid or expired confirmation link.', 'error');
-                }
-            } catch (error) {
-                console.error('Error verifying token:', error);
-                loadingSection.classList.add('hidden');
-                showMessage('Network error. Please check your connection and try again.', 'error');
-            }
-        }
-
-        // Handle password form submission
-        passwordForm.addEventListener('submit', async (e) => {
+        // Handle form submission
+        verificationForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            const email = emailInput.value.trim().toLowerCase();
+            const code = codeInput.value.trim();
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirm-password').value;
+
+            // Validate code format
+            if (!/^\d{6}$/.test(code)) {
+                showMessage('Verification code must be 6 digits.', 'error');
+                return;
+            }
 
             // Validate passwords match
             if (password !== confirmPassword) {
@@ -296,14 +303,15 @@
             hideMessage();
 
             try {
-                const response = await fetch(`${API_URL}/api/auth/complete-registration`, {
+                const response = await fetch(`${API_URL}/api/auth/verify-code`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     credentials: 'include',
                     body: JSON.stringify({
-                        token: confirmationToken,
+                        email: email,
+                        code: code,
                         password: password
                     })
                 });
@@ -316,7 +324,7 @@
                         window.location.href = '/app.html';
                     }, 1500);
                 } else {
-                    showMessage(data.error || 'Failed to create account. Please try again.', 'error');
+                    showMessage(data.error || 'Failed to verify code. Please check and try again.', 'error');
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Create Account';
                 }
@@ -327,9 +335,6 @@
                 submitBtn.textContent = 'Create Account';
             }
         });
-
-        // Verify token when page loads
-        verifyToken();
     </script>
 </body>
 </html>

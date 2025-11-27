@@ -158,12 +158,19 @@ def init_db():
             stripe_customer_id TEXT,
             stripe_subscription_id TEXT,
             confirmation_token TEXT UNIQUE,
+            verification_code TEXT,
             token_expires_at TIMESTAMP,
             email_verified INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             account_created INTEGER DEFAULT 0
         )
     ''')
+
+    # Add verification_code column if it doesn't exist (for existing databases)
+    try:
+        cursor.execute('ALTER TABLE pending_subscriptions ADD COLUMN verification_code TEXT')
+    except sqlite3.OperationalError:
+        pass  # Column already exists
 
     # Password reset tokens table
     cursor.execute('''
@@ -241,11 +248,11 @@ def send_email(to_email, subject, html_content):
         logger.error(f"Failed to send email to {to_email}: {str(e)}")
         return False
 
-def send_confirmation_email(to_email, confirmation_token):
-    """Send email confirmation with token link"""
+def send_confirmation_email(to_email, confirmation_token, verification_code):
+    """Send email confirmation with verification code"""
     # Use FRONTEND_URL if set, otherwise fall back to request.host_url for local dev
     base_url = os.environ.get('FRONTEND_URL', request.host_url.rstrip('/'))
-    confirmation_url = f"{base_url}/confirm-email.html?token={confirmation_token}"
+    confirmation_url = f"{base_url}/confirm-email.html?email={to_email}"
 
     html_content = f'''
     <!DOCTYPE html>
@@ -262,18 +269,26 @@ def send_confirmation_email(to_email, confirmation_token):
                         <tr>
                             <td>
                                 <h2 style="color: #f59e0b; margin: 0 0 20px 0; font-size: 24px;">Welcome to PresPilot!</h2>
-                                <p style="color: #333333; font-size: 16px; line-height: 1.5; margin: 0 0 25px 0;">Thank you for subscribing. Please confirm your email and create your password to get started.</p>
+                                <p style="color: #333333; font-size: 16px; line-height: 1.5; margin: 0 0 25px 0;">Thank you for subscribing! Use this verification code to create your account:</p>
 
-                                <!-- Button -->
-                                <div style="text-align: center; margin: 25px 0;">
-                                    <a href="{confirmation_url}" style="background-color: #f59e0b; color: #ffffff; padding: 16px 40px; text-decoration: none; font-weight: bold; font-size: 18px; display: inline-block; border-radius: 6px;">Confirm Email & Create Password</a>
+                                <!-- Verification Code Display -->
+                                <div style="text-align: center; margin: 30px 0;">
+                                    <div style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); padding: 30px; border-radius: 12px; display: inline-block;">
+                                        <p style="color: #1f2937; font-size: 14px; font-weight: 600; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 1px;">Your Verification Code</p>
+                                        <p style="color: #1f2937; font-size: 48px; font-weight: bold; margin: 0; letter-spacing: 8px; font-family: 'Courier New', monospace;">{verification_code}</p>
+                                    </div>
                                 </div>
 
-                                <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0 0 10px 0;">This link will expire in 24 hours.</p>
-                                <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0 0 15px 0; font-weight: bold;">If the button doesn't work, click this link or copy and paste it into your browser:</p>
-                                <p style="margin: 0 0 25px 0; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #f59e0b; word-break: break-all;">
-                                    <a href="{confirmation_url}" style="color: #0066cc; font-size: 14px; text-decoration: underline;">{confirmation_url}</a>
-                                </p>
+                                <p style="color: #333333; font-size: 16px; line-height: 1.5; margin: 0 0 15px 0; font-weight: bold;">How to complete your registration:</p>
+                                <ol style="color: #333333; font-size: 15px; line-height: 1.8; margin: 0 0 25px 0; padding-left: 25px;">
+                                    <li>Go to <a href="{confirmation_url}" style="color: #f59e0b; text-decoration: none; font-weight: 600;">PresPilot.com</a></li>
+                                    <li>Enter your email address</li>
+                                    <li>Enter the 6-digit code above</li>
+                                    <li>Create your password</li>
+                                    <li>Start creating presentations!</li>
+                                </ol>
+
+                                <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0 0 10px 0;">This code will expire in 24 hours.</p>
                                 <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0;">If you didn't request this, you can safely ignore this email.</p>
                             </td>
                         </tr>
@@ -285,7 +300,7 @@ def send_confirmation_email(to_email, confirmation_token):
     </html>
     '''
 
-    return send_email(to_email, 'Confirm Your PresPilot Account', html_content)
+    return send_email(to_email, 'Your PresPilot Verification Code', html_content)
 
 def login_required(f):
     """Decorator to require login for endpoints"""
@@ -1033,6 +1048,88 @@ def complete_registration():
         logger.error(f"Error completing registration: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/auth/verify-code', methods=['POST'])
+def verify_code():
+    """Verify email with code and create account"""
+    try:
+        data = request.json
+        email = data.get('email', '').strip().lower()
+        code = data.get('code', '').strip()
+        password = data.get('password')
+
+        if not all([email, code, password]):
+            return jsonify({'error': 'Email, verification code, and password are required'}), 400
+
+        # Validate password length
+        if len(password) < 8:
+            return jsonify({'error': 'Password must be at least 8 characters'}), 400
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Get pending subscription by email and code
+        pending = cursor.execute(
+            'SELECT * FROM pending_subscriptions WHERE customer_email = ? AND verification_code = ? AND account_created = 0',
+            (email, code)
+        ).fetchone()
+
+        if not pending:
+            conn.close()
+            return jsonify({'error': 'Invalid email or verification code'}), 400
+
+        # Verify code is not expired
+        token_expires_at = datetime.fromisoformat(pending['token_expires_at'])
+        if datetime.utcnow() > token_expires_at:
+            conn.close()
+            return jsonify({'error': 'Verification code has expired (24 hours)'}), 400
+
+        # Check if email already exists
+        existing = cursor.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
+        if existing:
+            conn.close()
+            return jsonify({'error': 'Account already exists with this email'}), 400
+
+        # Create user account with premium subscription
+        password_hash = generate_password_hash(password)
+        cursor.execute('''
+            INSERT INTO users
+            (email, password_hash, subscription_status, generations_limit, generations_used,
+             last_reset, stripe_customer_id, stripe_subscription_id)
+            VALUES (?, ?, 'premium', 10, 0, ?, ?, ?)
+        ''', (email, password_hash, datetime.now().isoformat(),
+              pending['stripe_customer_id'], pending['stripe_subscription_id']))
+
+        user_id = cursor.lastrowid
+
+        # Mark pending subscription as completed
+        cursor.execute(
+            'UPDATE pending_subscriptions SET account_created = 1, email_verified = 1 WHERE id = ?',
+            (pending['id'],)
+        )
+
+        conn.commit()
+        conn.close()
+
+        # Log the user in
+        session['user_id'] = user_id
+        session.permanent = True
+
+        logger.info(f"Account created via verification code for {email}")
+
+        return jsonify({
+            'success': True,
+            'message': 'Account created successfully',
+            'user': {
+                'id': user_id,
+                'email': email,
+                'subscription_status': 'premium'
+            }
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error verifying code: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 # ============= Theme Endpoints =============
 
 @app.route('/api/themes/list', methods=['GET'])
@@ -1167,20 +1264,21 @@ def stripe_webhook():
             else:
                 # New user - create pending subscription for email confirmation flow
                 confirmation_token = secrets.token_urlsafe(32)
+                verification_code = ''.join([str(secrets.randbelow(10)) for _ in range(6)])  # 6-digit code
                 token_expires_at = datetime.utcnow() + timedelta(hours=24)
 
                 cursor.execute('''
                     INSERT INTO pending_subscriptions
                     (session_id, customer_email, stripe_customer_id, stripe_subscription_id,
-                     confirmation_token, token_expires_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                     confirmation_token, verification_code, token_expires_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 ''', (session_id, customer_email, stripe_customer_id, stripe_subscription_id,
-                      confirmation_token, token_expires_at))
+                      confirmation_token, verification_code, token_expires_at))
                 conn.commit()
-                logger.info(f"Stored pending subscription for {customer_email} with confirmation token")
+                logger.info(f"Stored pending subscription for {customer_email} with verification code: {verification_code}")
 
-                # Send confirmation email
-                email_sent = send_confirmation_email(customer_email, confirmation_token)
+                # Send confirmation email with verification code
+                email_sent = send_confirmation_email(customer_email, confirmation_token, verification_code)
                 if email_sent:
                     logger.info(f"✅ Confirmation email sent to {customer_email}")
                 else:
