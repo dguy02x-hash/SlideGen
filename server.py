@@ -528,28 +528,37 @@ def proofread_slide_text(slide_text, max_tokens=500):
     Returns grammatically corrected version optimized for slides.
     """
     try:
-        prompt = f"""You are a professional editor proofreading slide text for a presentation.
+        prompt = f"""You are a strict professional editor proofreading slide text for a business presentation. Your job is to catch and fix EVERY error, no matter how small.
 
 ORIGINAL SLIDE TEXT:
 {slide_text}
 
-TASK: Thoroughly proofread and correct this slide text to ensure it is grammatically perfect, clear, and concise.
+CRITICAL: Fix EVERY single error you find. Do not let anything slip through. This is for a professional presentation and must be perfect.
 
-FIX ALL OF THE FOLLOWING:
-1. **Grammar errors** - Subject-verb agreement, tense consistency, pronoun usage, etc.
-2. **Spelling mistakes** - Any typos or misspelled words
-3. **Punctuation errors** - Commas, periods, semicolons, apostrophes, quotation marks
-4. **Sentence structure** - Run-on sentences, fragments, awkward constructions
-5. **Word choice** - Replace awkward or unclear wording with better, more concise alternatives
-6. **Clarity issues** - Make sure the text is clear and easy to understand at a glance
+FIX ALL OF THE FOLLOWING (be aggressive - fix everything):
+1. **Grammar errors** - Subject-verb agreement, tense consistency, pronoun usage, articles (a/an/the), prepositions
+2. **Spelling mistakes** - Any typos or misspelled words, including commonly confused words (their/they're/there, your/you're, its/it's)
+3. **Punctuation errors** - Missing or incorrect commas, periods, semicolons, apostrophes, quotation marks, hyphens
+4. **Capitalization** - Proper nouns, sentence beginnings, title case for headings
+5. **Sentence structure** - Run-on sentences, fragments, awkward constructions, unclear phrasing
+6. **Word choice** - Awkward wording, redundancy, vague language, unprofessional terms
+7. **Clarity issues** - Ambiguous statements, confusing phrasing, unclear references
+8. **Consistency** - Tense consistency, terminology consistency, parallel structure in lists
+9. **Professional tone** - Remove casual language, slang, or informal expressions
+10. **Redundancy** - Remove unnecessary words while keeping the meaning clear
 
 MAINTAIN:
-- The same general length and brevity (slide text should be concise)
-- The core meaning and information
-- Professional tone appropriate for presentations
-- Bullet point or phrase structure (don't turn it into full sentences if it wasn't)
+- Professional, concise presentation style
+- The core meaning and key information
+- Bullet point format if original was a bullet point
 
-OUTPUT: Return ONLY the corrected text with no explanations, comments, or labels. Keep it concise and slide-appropriate.
+IMPORTANT:
+- Make ALL necessary corrections, even if there are many
+- Do not be conservative - fix everything that needs fixing
+- The output must be grammatically perfect and professionally written
+- Keep it concise but don't sacrifice correctness for brevity
+
+OUTPUT: Return ONLY the corrected text with no explanations, comments, or labels.
 
 CORRECTED TEXT:"""
 
