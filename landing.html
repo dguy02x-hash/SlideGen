@@ -38,9 +38,7 @@
             height: 100%;
             z-index: 9999;
             background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            overflow: hidden;
             transition: opacity 1s ease-out;
         }
 
@@ -49,20 +47,29 @@
             pointer-events: none;
         }
 
-        .splash-screen #splash-player {
+        .splash-screen #splash-player,
+        .splash-screen #splash-player iframe {
             position: absolute;
             top: 50%;
             left: 50%;
-            min-width: 100%;
-            min-height: 100%;
-            width: auto;
-            height: auto;
-            transform: translate(-50%, -50%);
+            width: 120vw;
+            height: 120vh;
+            transform: translate(-50%, -50%) scale(1.5);
+            pointer-events: none;
         }
 
-        .splash-screen #splash-player iframe {
-            width: 100vw;
-            height: 100vh;
+        /* Make splash video cover entire area on all screen sizes */
+        @media (min-aspect-ratio: 16/9) {
+            .splash-screen #splash-player,
+            .splash-screen #splash-player iframe {
+                height: 80vw;
+            }
+        }
+        @media (max-aspect-ratio: 16/9) {
+            .splash-screen #splash-player,
+            .splash-screen #splash-player iframe {
+                width: 200vh;
+            }
         }
 
         /* Header */
@@ -734,6 +741,7 @@
                 videoId: 't62GZrROZ3g',
                 playerVars: {
                     autoplay: 1,
+                    mute: 1,
                     controls: 0,
                     showinfo: 0,
                     rel: 0,
@@ -741,7 +749,8 @@
                     playsinline: 1,
                     iv_load_policy: 3,
                     disablekb: 1,
-                    fs: 0
+                    fs: 0,
+                    cc_load_policy: 0
                 },
                 events: {
                     'onReady': onSplashReady,
