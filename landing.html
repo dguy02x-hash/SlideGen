@@ -129,7 +129,7 @@
             overflow: hidden;
         }
 
-        /* Gradient Background (Video disabled temporarily) */
+        /* YouTube Video Background */
         .video-background {
             position: absolute;
             top: 0;
@@ -137,11 +137,30 @@
             width: 100%;
             height: 100%;
             z-index: 1;
+            overflow: hidden;
             background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
         }
 
-        .video-background video {
-            display: none; /* Disabled until loading issue resolved */
+        .video-background iframe {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100vw;
+            height: 100vh;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        /* Make video cover entire area on all screen sizes */
+        @media (min-aspect-ratio: 16/9) {
+            .video-background iframe {
+                height: 56.25vw; /* 16:9 aspect ratio */
+            }
+        }
+        @media (max-aspect-ratio: 16/9) {
+            .video-background iframe {
+                width: 177.78vh; /* 16:9 aspect ratio */
+            }
         }
 
         /* Dark overlay for text readability */
@@ -502,19 +521,18 @@
 
     <!-- Hero Section -->
     <section class="hero">
-        <!-- Video Background -->
+        <!-- YouTube Video Background -->
         <div class="video-background">
-            <video id="background-video" class="active" muted playsinline preload="auto" autoplay loop>
-                <source src="/video1-2.mp4" type="video/mp4">
-                Your browser does not support the video tag.
-            </video>
+            <iframe
+                src="https://www.youtube.com/embed/0YAsIVEctt8?autoplay=1&mute=1&loop=1&playlist=0YAsIVEctt8&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1"
+                frameborder="0"
+                allow="autoplay; encrypted-media"
+                allowfullscreen>
+            </iframe>
         </div>
 
         <!-- Dark Overlay -->
         <div class="hero-overlay"></div>
-
-        <!-- Video Status Indicator -->
-        <div id="video-status" class="video-status">Loading videos...</div>
 
         <!-- Hero Content -->
         <div class="hero-content">
@@ -650,61 +668,6 @@
             : window.location.origin;
 
         let currentUserStatus = null;
-
-        // Simple Video Background System
-        const backgroundVideo = document.getElementById('background-video');
-        const statusIndicator = document.getElementById('video-status');
-        let videoLoaded = false;
-
-        function updateStatus(message, type = '') {
-            statusIndicator.textContent = message;
-            statusIndicator.className = 'video-status ' + type;
-        }
-
-        // Timeout: If video doesn't load in 30 seconds, show error
-        setTimeout(() => {
-            if (!videoLoaded) {
-                updateStatus('Video loading slow or failed (Size: 970KB)', 'error');
-            }
-        }, 30000);
-
-        // Show progress updates
-        updateStatus('Loading video (970KB)...', '');
-
-        // Log video source for debugging
-        setTimeout(() => {
-            if (!videoLoaded) {
-                updateStatus('Still loading... (Check network)', '');
-            }
-        }, 5000);
-
-        // Wait for video to load
-        backgroundVideo.addEventListener('loadeddata', () => {
-            videoLoaded = true;
-            updateStatus('Video loaded ✓', 'loaded');
-            backgroundVideo.play()
-                .then(() => {
-                    updateStatus('Video playing ▶', 'loaded');
-                    // Hide indicator after 3 seconds
-                    setTimeout(() => {
-                        statusIndicator.style.display = 'none';
-                    }, 3000);
-                })
-                .catch(err => {
-                    updateStatus('Click page to start video', 'error');
-                    // Try to play on user interaction
-                    document.addEventListener('click', () => {
-                        backgroundVideo.play();
-                        updateStatus('Video playing ▶', 'loaded');
-                        setTimeout(() => statusIndicator.style.display = 'none', 2000);
-                    }, { once: true });
-                });
-        });
-
-        // Log errors
-        backgroundVideo.addEventListener('error', (e) => {
-            updateStatus('Error loading video1-2.mp4', 'error');
-        });
 
         // Check authentication on page load
         window.addEventListener('load', async () => {
