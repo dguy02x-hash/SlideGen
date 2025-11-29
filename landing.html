@@ -527,12 +527,8 @@
     <section class="hero">
         <!-- Video Background -->
         <div class="video-background">
-            <video id="video1" class="active" muted playsinline preload="auto" autoplay loop>
-                <source src="/video1.mp4" type="video/mp4">
-                Your browser does not support the video tag.
-            </video>
-            <video id="video2" muted playsinline preload="auto" loop>
-                <source src="/video2.mp4" type="video/mp4">
+            <video id="background-video" class="active" muted playsinline preload="auto" autoplay loop>
+                <source src="/video1-2.mp4" type="video/mp4">
                 Your browser does not support the video tag.
             </video>
         </div>
@@ -678,84 +674,49 @@
 
         let currentUserStatus = null;
 
-        // Video Background Loop System
-        const video1 = document.getElementById('video1');
-        const video2 = document.getElementById('video2');
+        // Simple Video Background System
+        const backgroundVideo = document.getElementById('background-video');
         const statusIndicator = document.getElementById('video-status');
-        let currentVideo = 1;
-        let video1Loaded = false;
-        let video2Loaded = false;
+        let videoLoaded = false;
 
         function updateStatus(message, type = '') {
             statusIndicator.textContent = message;
             statusIndicator.className = 'video-status ' + type;
         }
 
-        // Timeout: If videos don't load in 10 seconds, show error
+        // Timeout: If video doesn't load in 10 seconds, show error
         setTimeout(() => {
-            if (!video1Loaded) {
-                updateStatus('Videos not loading - Check file size/format', 'error');
+            if (!videoLoaded) {
+                updateStatus('Video not loading - File may be too large', 'error');
             }
         }, 10000);
 
-        // Wait for videos to load before playing
-        video1.addEventListener('loadeddata', () => {
-            video1Loaded = true;
-            updateStatus('Video 1 loaded ✓', 'loaded');
-            video1.play()
+        // Wait for video to load
+        backgroundVideo.addEventListener('loadeddata', () => {
+            videoLoaded = true;
+            updateStatus('Video loaded ✓', 'loaded');
+            backgroundVideo.play()
                 .then(() => {
-                    updateStatus('Video 1 playing ▶', 'loaded');
+                    updateStatus('Video playing ▶', 'loaded');
                     // Hide indicator after 3 seconds
                     setTimeout(() => {
                         statusIndicator.style.display = 'none';
                     }, 3000);
                 })
                 .catch(err => {
-                    updateStatus('Autoplay blocked - Click page to start', 'error');
+                    updateStatus('Click page to start video', 'error');
                     // Try to play on user interaction
                     document.addEventListener('click', () => {
-                        video1.play();
-                        updateStatus('Video 1 playing ▶', 'loaded');
+                        backgroundVideo.play();
+                        updateStatus('Video playing ▶', 'loaded');
                         setTimeout(() => statusIndicator.style.display = 'none', 2000);
                     }, { once: true });
                 });
         });
 
-        video2.addEventListener('loadeddata', () => {
-            video2Loaded = true;
-            if (video1Loaded) {
-                updateStatus('Both videos loaded ✓✓', 'loaded');
-            }
-        });
-
         // Log errors
-        video1.addEventListener('error', (e) => {
-            updateStatus('Error loading video1.mp4', 'error');
-        });
-
-        video2.addEventListener('error', (e) => {
-            updateStatus('Error loading video2.mp4', 'error');
-        });
-
-        // Handle video transitions
-        video1.addEventListener('ended', () => {
-            console.log('Video 1 ended, switching to Video 2');
-            video1.classList.remove('active');
-            video2.classList.add('active');
-            video2.play()
-                .then(() => console.log('Video 2 playing'))
-                .catch(err => console.error('Video 2 play error:', err));
-            currentVideo = 2;
-        });
-
-        video2.addEventListener('ended', () => {
-            console.log('Video 2 ended, switching to Video 1');
-            video2.classList.remove('active');
-            video1.classList.add('active');
-            video1.play()
-                .then(() => console.log('Video 1 playing'))
-                .catch(err => console.error('Video 1 play error:', err));
-            currentVideo = 1;
+        backgroundVideo.addEventListener('error', (e) => {
+            updateStatus('Error loading video1-2.mp4', 'error');
         });
 
         // Check authentication on page load
