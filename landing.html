@@ -137,6 +137,7 @@
             width: 100%;
             height: 100%;
             z-index: 1;
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
         }
 
         .video-background video {
@@ -655,21 +656,49 @@
         const video2 = document.getElementById('video2');
         let currentVideo = 1;
 
-        // Start playing first video
-        video1.play().catch(err => console.log('Autoplay prevented:', err));
+        // Debug: Log video elements
+        console.log('Video 1:', video1);
+        console.log('Video 2:', video2);
+
+        // Wait for videos to load before playing
+        video1.addEventListener('loadeddata', () => {
+            console.log('Video 1 loaded successfully');
+            video1.play()
+                .then(() => console.log('Video 1 playing'))
+                .catch(err => console.error('Video 1 autoplay prevented:', err));
+        });
+
+        video2.addEventListener('loadeddata', () => {
+            console.log('Video 2 loaded successfully');
+        });
+
+        // Log errors
+        video1.addEventListener('error', (e) => {
+            console.error('Video 1 error:', e, video1.error);
+        });
+
+        video2.addEventListener('error', (e) => {
+            console.error('Video 2 error:', e, video2.error);
+        });
 
         // Handle video transitions
         video1.addEventListener('ended', () => {
+            console.log('Video 1 ended, switching to Video 2');
             video1.classList.remove('active');
             video2.classList.add('active');
-            video2.play();
+            video2.play()
+                .then(() => console.log('Video 2 playing'))
+                .catch(err => console.error('Video 2 play error:', err));
             currentVideo = 2;
         });
 
         video2.addEventListener('ended', () => {
+            console.log('Video 2 ended, switching to Video 1');
             video2.classList.remove('active');
             video1.classList.add('active');
-            video1.play();
+            video1.play()
+                .then(() => console.log('Video 1 playing'))
+                .catch(err => console.error('Video 1 play error:', err));
             currentVideo = 1;
         });
 
