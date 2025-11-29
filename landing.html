@@ -29,6 +29,42 @@
             line-height: 1.6;
         }
 
+        /* Splash Screen Video */
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 1s ease-out;
+        }
+
+        .splash-screen.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .splash-screen #splash-player {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            transform: translate(-50%, -50%);
+        }
+
+        .splash-screen #splash-player iframe {
+            width: 100vw;
+            height: 100vh;
+        }
+
         /* Header */
         header {
             background: var(--bg-white);
@@ -521,6 +557,11 @@
     </style>
 </head>
 <body>
+    <!-- Splash Screen -->
+    <div class="splash-screen" id="splash-screen">
+        <div id="splash-player"></div>
+    </div>
+
     <!-- Header -->
     <header>
         <nav>
@@ -683,9 +724,32 @@
 
         let currentUserStatus = null;
 
-        // YouTube Player API for seamless looping
+        // YouTube Player API for splash screen and background video
         let player;
+        let splashPlayer;
+
         function onYouTubeIframeAPIReady() {
+            // Create splash screen video first
+            splashPlayer = new YT.Player('splash-player', {
+                videoId: 't62GZrROZ3g',
+                playerVars: {
+                    autoplay: 1,
+                    controls: 0,
+                    showinfo: 0,
+                    rel: 0,
+                    modestbranding: 1,
+                    playsinline: 1,
+                    iv_load_policy: 3,
+                    disablekb: 1,
+                    fs: 0
+                },
+                events: {
+                    'onReady': onSplashReady,
+                    'onStateChange': onSplashStateChange
+                }
+            });
+
+            // Create background video
             player = new YT.Player('youtube-player', {
                 videoId: '0YAsIVEctt8',
                 playerVars: {
@@ -706,6 +770,27 @@
                     'onStateChange': onPlayerStateChange
                 }
             });
+        }
+
+        function onSplashReady(event) {
+            event.target.playVideo();
+        }
+
+        function onSplashStateChange(event) {
+            // When splash video ends, fade out and show homepage
+            if (event.data == YT.PlayerState.ENDED) {
+                fadeSplashToHomepage();
+            }
+        }
+
+        function fadeSplashToHomepage() {
+            const splashScreen = document.getElementById('splash-screen');
+            splashScreen.classList.add('fade-out');
+
+            // Remove splash screen after fade completes
+            setTimeout(() => {
+                splashScreen.style.display = 'none';
+            }, 1000);
         }
 
         function onPlayerReady(event) {
