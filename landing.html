@@ -169,6 +169,28 @@
             z-index: 2;
         }
 
+        /* Video Loading Indicator */
+        .video-status {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 10;
+            font-family: monospace;
+        }
+
+        .video-status.loaded {
+            background: rgba(16, 185, 129, 0.8);
+        }
+
+        .video-status.error {
+            background: rgba(239, 68, 68, 0.8);
+        }
+
         .hero-content {
             max-width: 800px;
             margin: 0 auto;
@@ -516,6 +538,9 @@
         <!-- Dark Overlay -->
         <div class="hero-overlay"></div>
 
+        <!-- Video Status Indicator -->
+        <div id="video-status" class="video-status">Loading videos...</div>
+
         <!-- Hero Content -->
         <div class="hero-content">
             <h1>Create Stunning Presentations in Minutes</h1>
@@ -654,31 +679,53 @@
         // Video Background Loop System
         const video1 = document.getElementById('video1');
         const video2 = document.getElementById('video2');
+        const statusIndicator = document.getElementById('video-status');
         let currentVideo = 1;
+        let video1Loaded = false;
+        let video2Loaded = false;
 
-        // Debug: Log video elements
-        console.log('Video 1:', video1);
-        console.log('Video 2:', video2);
+        function updateStatus(message, type = '') {
+            statusIndicator.textContent = message;
+            statusIndicator.className = 'video-status ' + type;
+        }
 
         // Wait for videos to load before playing
         video1.addEventListener('loadeddata', () => {
-            console.log('Video 1 loaded successfully');
+            video1Loaded = true;
+            updateStatus('Video 1 loaded ✓', 'loaded');
             video1.play()
-                .then(() => console.log('Video 1 playing'))
-                .catch(err => console.error('Video 1 autoplay prevented:', err));
+                .then(() => {
+                    updateStatus('Video 1 playing ▶', 'loaded');
+                    // Hide indicator after 3 seconds
+                    setTimeout(() => {
+                        statusIndicator.style.display = 'none';
+                    }, 3000);
+                })
+                .catch(err => {
+                    updateStatus('Autoplay blocked - Click page to start', 'error');
+                    // Try to play on user interaction
+                    document.addEventListener('click', () => {
+                        video1.play();
+                        updateStatus('Video 1 playing ▶', 'loaded');
+                        setTimeout(() => statusIndicator.style.display = 'none', 2000);
+                    }, { once: true });
+                });
         });
 
         video2.addEventListener('loadeddata', () => {
-            console.log('Video 2 loaded successfully');
+            video2Loaded = true;
+            if (video1Loaded) {
+                updateStatus('Both videos loaded ✓✓', 'loaded');
+            }
         });
 
         // Log errors
         video1.addEventListener('error', (e) => {
-            console.error('Video 1 error:', e, video1.error);
+            updateStatus('Error loading video1.mp4', 'error');
         });
 
         video2.addEventListener('error', (e) => {
-            console.error('Video 2 error:', e, video2.error);
+            updateStatus('Error loading video2.mp4', 'error');
         });
 
         // Handle video transitions
