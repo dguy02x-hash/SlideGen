@@ -1954,6 +1954,11 @@ def landing_page():
     """Serve landing page"""
     return send_from_directory('.', 'landing.html')
 
+@app.route('/video1-2.mp4')
+def serve_video():
+    """Serve background video"""
+    return send_from_directory('.', 'video1-2.mp4', mimetype='video/mp4')
+
 @app.route('/theme-previews/<path:filename>')
 def serve_theme_preview(filename):
     """Serve theme preview images"""

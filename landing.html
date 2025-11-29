@@ -684,12 +684,22 @@
             statusIndicator.className = 'video-status ' + type;
         }
 
-        // Timeout: If video doesn't load in 10 seconds, show error
+        // Timeout: If video doesn't load in 30 seconds, show error
         setTimeout(() => {
             if (!videoLoaded) {
-                updateStatus('Video not loading - File may be too large', 'error');
+                updateStatus('Video loading slow or failed (Size: 970KB)', 'error');
             }
-        }, 10000);
+        }, 30000);
+
+        // Show progress updates
+        updateStatus('Loading video (970KB)...', '');
+
+        // Log video source for debugging
+        setTimeout(() => {
+            if (!videoLoaded) {
+                updateStatus('Still loading... (Check network)', '');
+            }
+        }, 5000);
 
         // Wait for video to load
         backgroundVideo.addEventListener('loadeddata', () => {
