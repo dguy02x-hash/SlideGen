@@ -141,7 +141,8 @@
             background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
         }
 
-        .video-background iframe {
+        .video-background #youtube-player,
+        .video-background #youtube-player iframe {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -149,10 +150,13 @@
             height: 120vh;
             transform: translate(-50%, -50%) scale(1.5);
             pointer-events: none;
+        }
+
+        .video-background #youtube-player {
             visibility: hidden;
         }
 
-        .video-background iframe.loaded {
+        .video-background #youtube-player.loaded {
             visibility: visible;
             animation: fadeIn 0.5s ease-in;
         }
@@ -538,12 +542,7 @@
     <section class="hero">
         <!-- YouTube Video Background -->
         <div class="video-background">
-            <iframe
-                src="https://www.youtube-nocookie.com/embed/0YAsIVEctt8?autoplay=1&mute=1&loop=1&playlist=0YAsIVEctt8&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&disablekb=1&fs=0&cc_load_policy=0&origin=https://yourdomain.com"
-                frameborder="0"
-                allow="autoplay; encrypted-media"
-                title="Background video">
-            </iframe>
+            <div id="youtube-player"></div>
         </div>
 
         <!-- Dark Overlay -->
@@ -684,14 +683,59 @@
 
         let currentUserStatus = null;
 
-        // Smooth video fade-in - wait longer to ensure video is playing
-        const videoIframe = document.querySelector('.video-background iframe');
-        if (videoIframe) {
-            // Hide iframe completely until video is ready
-            setTimeout(() => {
-                videoIframe.classList.add('loaded');
-            }, 3000); // 3 seconds to ensure video has started playing
+        // YouTube Player API for seamless looping
+        let player;
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('youtube-player', {
+                videoId: '0YAsIVEctt8',
+                playerVars: {
+                    autoplay: 1,
+                    mute: 1,
+                    controls: 0,
+                    showinfo: 0,
+                    rel: 0,
+                    modestbranding: 1,
+                    playsinline: 1,
+                    iv_load_policy: 3,
+                    disablekb: 1,
+                    fs: 0,
+                    cc_load_policy: 0
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
         }
+
+        function onPlayerReady(event) {
+            event.target.playVideo();
+            // Show video after it starts playing
+            setTimeout(() => {
+                document.getElementById('youtube-player').classList.add('loaded');
+            }, 1000);
+        }
+
+        function onPlayerStateChange(event) {
+            // Seamless loop: restart video slightly before it ends
+            if (event.data == YT.PlayerState.PLAYING) {
+                const duration = player.getDuration();
+                const checkTime = setInterval(() => {
+                    const currentTime = player.getCurrentTime();
+                    // Restart 0.5 seconds before end for seamless loop
+                    if (duration - currentTime < 0.5) {
+                        player.seekTo(0);
+                        clearInterval(checkTime);
+                    }
+                }, 100);
+            }
+        }
+
+        // Load YouTube API
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
         // Check authentication on page load
         window.addEventListener('load', async () => {
