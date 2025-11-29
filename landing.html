@@ -527,11 +527,13 @@
     <section class="hero">
         <!-- Video Background -->
         <div class="video-background">
-            <video id="video1" class="active" muted playsinline>
-                <source src="video1.mp4" type="video/mp4">
+            <video id="video1" class="active" muted playsinline preload="auto" autoplay loop>
+                <source src="/video1.mp4" type="video/mp4">
+                Your browser does not support the video tag.
             </video>
-            <video id="video2" muted playsinline>
-                <source src="video2.mp4" type="video/mp4">
+            <video id="video2" muted playsinline preload="auto" loop>
+                <source src="/video2.mp4" type="video/mp4">
+                Your browser does not support the video tag.
             </video>
         </div>
 
@@ -688,6 +690,13 @@
             statusIndicator.textContent = message;
             statusIndicator.className = 'video-status ' + type;
         }
+
+        // Timeout: If videos don't load in 10 seconds, show error
+        setTimeout(() => {
+            if (!video1Loaded) {
+                updateStatus('Videos not loading - Check file size/format', 'error');
+            }
+        }, 10000);
 
         // Wait for videos to load before playing
         video1.addEventListener('loadeddata', () => {
