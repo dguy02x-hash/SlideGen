@@ -52,24 +52,12 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 120vw;
-            height: 120vh;
-            transform: translate(-50%, -50%) scale(1.5);
+            width: 100vw;
+            height: 56.25vw; /* 16:9 aspect ratio */
+            min-height: 100vh;
+            min-width: 177.77vh; /* 16:9 aspect ratio */
+            transform: translate(-50%, -50%);
             pointer-events: none;
-        }
-
-        /* Make splash video cover entire area on all screen sizes */
-        @media (min-aspect-ratio: 16/9) {
-            .splash-screen #splash-player,
-            .splash-screen #splash-player iframe {
-                height: 80vw;
-            }
-        }
-        @media (max-aspect-ratio: 16/9) {
-            .splash-screen #splash-player,
-            .splash-screen #splash-player iframe {
-                width: 200vh;
-            }
         }
 
         /* Header */
@@ -189,9 +177,11 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 120vw;
-            height: 120vh;
-            transform: translate(-50%, -50%) scale(1.5);
+            width: 100vw;
+            height: 56.25vw; /* 16:9 aspect ratio */
+            min-height: 100vh;
+            min-width: 177.77vh; /* 16:9 aspect ratio */
+            transform: translate(-50%, -50%);
             pointer-events: none;
         }
 
@@ -210,18 +200,6 @@
             }
             to {
                 opacity: 1;
-            }
-        }
-
-        /* Make video cover entire area on all screen sizes */
-        @media (min-aspect-ratio: 16/9) {
-            .video-background iframe {
-                height: 80vw;
-            }
-        }
-        @media (max-aspect-ratio: 16/9) {
-            .video-background iframe {
-                width: 200vh;
             }
         }
 
@@ -788,9 +766,17 @@
         }
 
         function onSplashStateChange(event) {
-            // When splash video ends, fade out and show homepage
-            if (event.data == YT.PlayerState.ENDED) {
-                fadeSplashToHomepage();
+            // Monitor video time and fade out before it ends (to prevent play button)
+            if (event.data == YT.PlayerState.PLAYING) {
+                const duration = splashPlayer.getDuration();
+                const checkTime = setInterval(() => {
+                    const currentTime = splashPlayer.getCurrentTime();
+                    // Fade out 1 second before end to prevent play button
+                    if (duration - currentTime < 1) {
+                        fadeSplashToHomepage();
+                        clearInterval(checkTime);
+                    }
+                }, 100);
             }
         }
 
