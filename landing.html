@@ -738,6 +738,7 @@
         function onYouTubeIframeAPIReady() {
             // Create splash screen video first
             splashPlayer = new YT.Player('splash-player', {
+                host: 'https://www.youtube-nocookie.com',
                 videoId: 't62GZrROZ3g',
                 playerVars: {
                     autoplay: 1,
@@ -760,6 +761,7 @@
 
             // Create background video
             player = new YT.Player('youtube-player', {
+                host: 'https://www.youtube-nocookie.com',
                 videoId: '0YAsIVEctt8',
                 playerVars: {
                     autoplay: 1,
