@@ -149,6 +149,13 @@
             height: 120vh;
             transform: translate(-50%, -50%) scale(1.5);
             pointer-events: none;
+            opacity: 0;
+            transition: opacity 1s ease-in;
+            background: transparent;
+        }
+
+        .video-background iframe.loaded {
+            opacity: 1;
         }
 
         /* Make video cover entire area on all screen sizes */
@@ -668,6 +675,15 @@
             : window.location.origin;
 
         let currentUserStatus = null;
+
+        // Smooth video fade-in
+        const videoIframe = document.querySelector('.video-background iframe');
+        if (videoIframe) {
+            // Add loaded class after a short delay to ensure video has started
+            setTimeout(() => {
+                videoIframe.classList.add('loaded');
+            }, 1500);
+        }
 
         // Check authentication on page load
         window.addEventListener('load', async () => {
