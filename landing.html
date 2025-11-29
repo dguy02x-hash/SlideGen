@@ -712,6 +712,7 @@
         // YouTube Player API for splash screen and background video
         let player;
         let splashPlayer;
+        let splashFaded = false;
 
         function onYouTubeIframeAPIReady() {
             // Create splash screen video first
@@ -767,12 +768,17 @@
 
         function onSplashStateChange(event) {
             // Monitor video time and fade out before it ends (to prevent play button)
-            if (event.data == YT.PlayerState.PLAYING) {
+            if (event.data == YT.PlayerState.PLAYING && !splashFaded) {
                 const duration = splashPlayer.getDuration();
                 const checkTime = setInterval(() => {
+                    if (splashFaded) {
+                        clearInterval(checkTime);
+                        return;
+                    }
                     const currentTime = splashPlayer.getCurrentTime();
-                    // Fade out 1 second before end to prevent play button
-                    if (duration - currentTime < 1) {
+                    // Fade out 2 seconds before end to prevent play button
+                    if (duration - currentTime < 2) {
+                        splashFaded = true;
                         fadeSplashToHomepage();
                         clearInterval(checkTime);
                     }
