@@ -771,13 +771,22 @@
         let splashFaded = false;
         let bgLoopInterval = null;
 
-        // Auto-skip splash after 1 second if video doesn't load
-        setTimeout(() => {
-            if (!splashFaded) {
-                console.log('Splash video timeout - auto-skipping to homepage');
-                fadeSplashToHomepage();
-            }
-        }, 1000);
+        // Check if user has already seen splash video this session
+        const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
+
+        if (hasSeenSplash === 'true') {
+            // Skip splash video if already seen
+            console.log('User has seen splash - skipping intro');
+            fadeSplashToHomepage();
+        } else {
+            // Auto-skip splash after 1 second if video doesn't load
+            setTimeout(() => {
+                if (!splashFaded) {
+                    console.log('Splash video timeout - auto-skipping to homepage');
+                    fadeSplashToHomepage();
+                }
+            }, 1000);
+        }
 
         function onYouTubeIframeAPIReady() {
             // Create splash screen video first
@@ -877,6 +886,9 @@
         function fadeSplashToHomepage() {
             const splashScreen = document.getElementById('splash-screen');
             splashScreen.classList.add('fade-out');
+
+            // Mark that user has seen the splash video
+            sessionStorage.setItem('hasSeenSplash', 'true');
 
             // Remove splash screen after fade completes
             setTimeout(() => {
