@@ -205,6 +205,7 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
         }
 
         /* YouTube Video Background */
@@ -622,14 +623,6 @@
 
     <!-- Hero Section -->
     <section class="hero">
-        <!-- YouTube Video Background -->
-        <div class="video-background">
-            <div id="youtube-player"></div>
-        </div>
-
-        <!-- Dark Overlay -->
-        <div class="hero-overlay"></div>
-
         <!-- Hero Content -->
         <div class="hero-content">
             <h1>Create Stunning Presentations in Minutes</h1>
@@ -765,12 +758,9 @@
 
         let currentUserStatus = null;
 
-        // YouTube Player API for splash screen and background video
-        let player;
+        // YouTube Player API for splash screen
         let splashPlayer;
         let splashFaded = false;
-        let bgLoopInterval = null;
-        let bgVideoLoaded = false;
 
         // Check if user has already seen splash video this session
         const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
@@ -815,42 +805,7 @@
                 }
             });
 
-            // Create background video
-            player = new YT.Player('youtube-player', {
-                host: 'https://www.youtube-nocookie.com',
-                videoId: '0YAsIVEctt8',
-                playerVars: {
-                    autoplay: 1,
-                    mute: 1,
-                    controls: 0,
-                    showinfo: 0,
-                    rel: 0,
-                    modestbranding: 1,
-                    playsinline: 1,
-                    iv_load_policy: 3,
-                    disablekb: 1,
-                    fs: 0,
-                    cc_load_policy: 0,
-                    origin: window.location.origin,
-                    enablejsapi: 1
-                },
-                events: {
-                    'onReady': onPlayerReady,
-                    'onStateChange': onPlayerStateChange,
-                    'onError': onPlayerError
-                }
-            });
-
-            // Auto-hide background video after 1 second if it doesn't load
-            setTimeout(() => {
-                if (!bgVideoLoaded) {
-                    console.log('Background video timeout - showing gradient only');
-                    const videoElement = document.getElementById('youtube-player');
-                    if (videoElement) {
-                        videoElement.style.display = 'none';
-                    }
-                }
-            }, 1000);
+            // Background video removed - using gradient only
         }
 
         function onSplashReady(event) {
@@ -908,52 +863,7 @@
             }, 1000);
         }
 
-        function onPlayerReady(event) {
-            // Mark that video loaded successfully
-            bgVideoLoaded = true;
-
-            // Ensure mute is set before playing
-            event.target.mute();
-            event.target.setVolume(0);
-
-            // Try to play the video
-            const playPromise = event.target.playVideo();
-
-            // Show video after it starts playing
-            setTimeout(() => {
-                document.getElementById('youtube-player').classList.add('loaded');
-            }, 1000);
-        }
-
-        function onPlayerError(event) {
-            console.error('Background video error:', event.data);
-            // Keep gradient background visible, hide video player on error
-            const videoElement = document.getElementById('youtube-player');
-            if (videoElement) {
-                videoElement.style.display = 'none';
-            }
-        }
-
-        function onPlayerStateChange(event) {
-            // Seamless loop: restart video slightly before it ends
-            if (event.data == YT.PlayerState.PLAYING) {
-                // Clear any existing interval
-                if (bgLoopInterval) {
-                    clearInterval(bgLoopInterval);
-                }
-
-                const duration = player.getDuration();
-                bgLoopInterval = setInterval(() => {
-                    const currentTime = player.getCurrentTime();
-                    // Restart 1.5 seconds before end for seamless loop
-                    if (duration - currentTime < 1.5) {
-                        player.seekTo(0);
-                        clearInterval(bgLoopInterval);
-                        bgLoopInterval = null;
-                    }
-                }, 100);
-            }
-        }
+        // Background video functions removed - using gradient only
 
         // Load YouTube API
         const tag = document.createElement('script');
