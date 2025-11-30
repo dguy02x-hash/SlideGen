@@ -339,37 +339,22 @@ def subscription_required(f):
     return decorated_function
 
 def check_generations_limit(user_id):
-    """Check if user has generations available"""
+    """Check if user has generations available (resets happen via Stripe billing cycle webhook)"""
     conn = get_db()
     cursor = conn.cursor()
-    
+
     user = cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
     conn.close()
-    
+
     if not user:
         return False
-    
+
     # Only premium users can generate
     if user['subscription_status'] != 'premium':
         return False
-    
-    # Check if we need to reset monthly limit
-    last_reset = datetime.fromisoformat(user['last_reset']) if user['last_reset'] else None
-    now = datetime.now()
-    
-    # Reset monthly if it's a new month
-    if not last_reset or (now.year > last_reset.year or now.month > last_reset.month):
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute('''
-            UPDATE users 
-            SET generations_used = 0, last_reset = ? 
-            WHERE id = ?
-        ''', (now.isoformat(), user_id))
-        conn.commit()
-        conn.close()
-        return True
-    
+
+    # Check if user has generations remaining
+    # Note: Generations reset automatically when Stripe charges them (invoice.payment_succeeded webhook)
     return user['generations_used'] < user['generations_limit']
 
 def increment_generation_count(user_id):
@@ -572,11 +557,16 @@ MAINTAIN:
 - Professional, concise presentation style
 - The core meaning and key information
 - Bullet point format if original was a bullet point
+- ALL numbers, percentages, statistics, dates, and specific data points EXACTLY as they appear
+- Specific terminology, proper nouns, and technical terms
+- Important capitalization for product names, companies, or specific terms
 
 IMPORTANT:
 - Make ALL necessary corrections, even if there are many
 - Do not be conservative - fix everything that needs fixing
 - The output must be grammatically perfect and professionally written
+- NEVER remove, change, or alter numbers, percentages, or statistics
+- NEVER change specific data points or measurements
 - Keep it concise but don't sacrifice correctness for brevity
 
 OUTPUT: Return ONLY the corrected text with no explanations, comments, or labels.
@@ -1301,22 +1291,34 @@ def stripe_webhook():
     elif event['type'] == 'invoice.payment_succeeded':
         invoice = event['data']['object']
         subscription_id = invoice.get('subscription')
-        
-        # Record payment
+
+        # Record payment and reset generation count
         conn = get_db()
         cursor = conn.cursor()
         user = cursor.execute(
-            'SELECT id FROM users WHERE stripe_subscription_id = ?', 
+            'SELECT id FROM users WHERE stripe_subscription_id = ?',
             (subscription_id,)
         ).fetchone()
-        
+
         if user:
+            # Record the payment
             cursor.execute('''
                 INSERT INTO payment_history (user_id, stripe_payment_id, amount, status)
                 VALUES (?, ?, ?, ?)
             ''', (user['id'], invoice['id'], invoice['amount_paid'] / 100, 'succeeded'))
+
+            # Reset generation count to 10 for the new billing cycle
+            cursor.execute('''
+                UPDATE users
+                SET generations_used = 0,
+                    generations_limit = 10,
+                    last_reset = ?
+                WHERE id = ?
+            ''', (datetime.now().isoformat(), user['id']))
+
             conn.commit()
-        
+            logger.info(f"✅ Payment succeeded for user {user['id']} - Reset generations to 10 (0 used)")
+
         conn.close()
     
     elif event['type'] == 'customer.subscription.deleted':
@@ -1411,9 +1413,85 @@ def research_topic():
         
         logger.info(f"User {user_id} researching: {topic[:50]}")
 
+        # Check if there's an uploaded document to use as source material
+        source_document = session.get('source_document', '')
+        document_context = ""
+
+        if source_document:
+            # First, check if this is a rubric/grading criteria document
+            rubric_check_prompt = f"""Analyze this document and determine if it is a RUBRIC, GRADING CRITERIA, or ASSIGNMENT REQUIREMENTS document.
+
+DOCUMENT:
+{source_document[:3000]}
+
+A rubric typically contains:
+- Grading criteria or scoring guidelines
+- Requirements for an assignment or presentation
+- Point values or grade levels
+- Performance expectations
+- Evaluation standards
+- Phrases like "must include", "should have", "points for", "criteria", "requirements"
+
+Answer with ONLY one word: "RUBRIC" if this is a rubric/grading criteria document, or "CONTENT" if this is regular content to present.
+"""
+
+            is_rubric_response = call_anthropic(rubric_check_prompt, max_tokens=10).strip().upper()
+            is_rubric = "RUBRIC" in is_rubric_response
+
+            if is_rubric:
+                # Treat as rubric - use as guidelines for HOW to create presentation
+                document_context = f"""
+⚠️ CRITICAL - RUBRIC/GRADING CRITERIA PROVIDED (USE AS GUIDELINES, NOT CONTENT):
+
+RUBRIC DOCUMENT:
+{source_document}
+
+⚠️ MANDATORY INSTRUCTIONS FOR RUBRIC-BASED PRESENTATIONS:
+1. The document above is a RUBRIC/GRADING CRITERIA - DO NOT create a presentation ABOUT the rubric itself
+2. The topic "{topic}" is what the presentation should be ABOUT
+3. USE the rubric as GUIDELINES for HOW to structure and create the presentation
+4. Follow any requirements specified in the rubric (e.g., number of slides, required sections, must include X, etc.)
+5. Meet the criteria and standards outlined in the rubric
+6. If the rubric specifies certain elements must be included (sources, statistics, examples, etc.), include them in the presentation about "{topic}"
+7. Create a presentation about "{topic}" that would RECEIVE A HIGH GRADE according to this rubric
+8. DO NOT explain the rubric - FOLLOW it to create excellent content about "{topic}"
+
+Example: If rubric says "must include 3 primary sources" → Include 3 primary sources about "{topic}"
+Example: If rubric says "discuss causes and effects" → Structure the presentation about "{topic}" to discuss causes and effects
+Example: If rubric says "minimum 8 slides" → Create at least 8 slides about "{topic}"
+
+"""
+                logger.info(f"✅ RUBRIC DETECTED - Using as guidelines for presentation about: {topic}")
+            else:
+                # Regular content document - use as primary source
+                document_context = f"""
+⚠️ CRITICAL - SOURCE DOCUMENT PROVIDED (YOU MUST USE THIS AS PRIMARY SOURCE):
+{source_document}
+
+⚠️ MANDATORY REQUIREMENTS FOR DOCUMENT-BASED PRESENTATIONS:
+1. Read through the ENTIRE document above and extract the most relevant information for the topic: "{topic}"
+2. You MUST base the presentation slides on the content from the source document above
+3. Extract key facts, statistics, numbers, and specific details from anywhere in the document
+4. Preserve important numbers, percentages, dates, and data points exactly as they appear in the document
+5. Use the document's terminology and specific examples
+6. The slides should reflect what's IN the document, not general knowledge about the topic
+7. If the document has specific capitalization or formatting for terms, preserve it
+8. Include specific quotes, data points, and examples from throughout the document
+9. Intelligently identify the most important information across the entire document, not just the beginning
+
+"""
+                logger.info(f"✅ CONTENT DOCUMENT detected - Using as primary source for presentation outline")
+
         # Search web for up-to-date information (especially important for current events)
+        # Skip web search if document uploaded - use document as primary source
         web_context = ""
-        search_results = search_tavily(topic, max_results=3)
+        search_results = []
+
+        if not source_document:
+            # Only search web if no document uploaded
+            search_results = search_tavily(topic, max_results=3)
+        else:
+            logger.info("⚠️  Skipping web search - using uploaded document as primary source")
 
         if search_results:
             # Format search results for inclusion in prompt
@@ -1440,24 +1518,30 @@ def research_topic():
         else:
             logger.warning(f"⚠️  No web search results - presentation will use AI knowledge only (may be outdated for current events)")
 
-        # Generate outline with web context (if available)
+        # Generate outline with document context (if available) and web context (if available)
         web_instruction = ""
-        if search_results:
+        if search_results and not source_document:
+            # Only use web search if no document uploaded
             web_instruction = "\n⚠️ CRITICAL: Current web information is provided above. You MUST base your presentation on this current information, NOT on your training data. Use specific facts, dates, and details from the web sources.\n"
+        elif source_document and search_results:
+            # If both document and web search available, prioritize document
+            web_instruction = "\n⚠️ NOTE: Web information is provided for additional context, but prioritize the source document content above.\n"
 
         prompt = f"""Create a detailed outline for a {num_slides}-slide presentation on: {topic}
 
-{web_context}{web_instruction}
+{document_context}{web_context}{web_instruction}
 CRITICAL REQUIREMENTS:
 1. Create EXACTLY {num_slides} sections (one per slide)
 2. Each section title must be VERY SHORT - MAXIMUM 2 WORDS (like "Overview", "Key Benefits", "Statistics", "Implementation", "Results")
 3. Each section must have 3-4 key points
 4. Each key point MUST be a COMPLETE, GRAMMATICALLY CORRECT SENTENCE (12-20 words)
 5. Key points must be SPECIFIC - include numbers, examples, names, dates when relevant
-6. NO repetition between sections - each section covers a DIFFERENT aspect
-7. Each key point should be informative but concise enough to fit on a slide
-8. IMPORTANT: Use proper grammar, spelling, and punctuation in all sentences
-9. If web information is provided above, you MUST prioritize it over your training data - use the current facts, not outdated predictions
+6. PRESERVE exact numbers, percentages, statistics, and data points from source materials
+7. NO repetition between sections - each section covers a DIFFERENT aspect
+8. Each key point should be informative but concise enough to fit on a slide
+9. IMPORTANT: Use proper grammar, spelling, and punctuation in all sentences
+10. If source document is provided above, extract facts directly from it and preserve specific terminology, numbers, and capitalization
+11. If web information is provided above, you MUST prioritize it over your training data - use the current facts, not outdated predictions
 
 Return ONLY valid JSON (no markdown, no ```json):
 {{
@@ -1704,13 +1788,13 @@ def generate_notes():
         document_context = ""
 
         if source_document:
-            # Extract relevant excerpts from source document for this slide
-            doc_excerpt = source_document[:3000]  # Use first 3000 chars as context
+            # Use full document for speaker notes - AI will extract relevant parts
             document_context = f"""
 SOURCE DOCUMENT CONTEXT (use this for additional details):
-{doc_excerpt}
+{source_document}
 
-Pull supplementary information, examples, data, or context from the source document above that relates to "{slide_title}".
+Search through the entire document above and pull supplementary information, examples, data, or context that relates to "{slide_title}".
+Extract the most relevant information from anywhere in the document, preserving specific numbers, quotes, and data points exactly.
 """
 
         if style == "Concise":
