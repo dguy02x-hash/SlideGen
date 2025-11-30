@@ -771,13 +771,13 @@
         let splashFaded = false;
         let bgLoopInterval = null;
 
-        // Auto-skip splash after 10 seconds if video doesn't load
+        // Auto-skip splash after 1 second if video doesn't load
         setTimeout(() => {
             if (!splashFaded) {
                 console.log('Splash video timeout - auto-skipping to homepage');
                 fadeSplashToHomepage();
             }
-        }, 10000);
+        }, 1000);
 
         function onYouTubeIframeAPIReady() {
             // Create splash screen video first
@@ -846,10 +846,8 @@
 
         function onSplashError(event) {
             console.error('Splash video error:', event.data);
-            // Auto-fade to homepage if splash video fails (longer delay for first-time visitors)
-            setTimeout(() => {
-                fadeSplashToHomepage();
-            }, 3000);
+            // Auto-fade to homepage immediately if splash video fails
+            fadeSplashToHomepage();
         }
 
         function skipSplash() {
