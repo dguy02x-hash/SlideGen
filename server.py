@@ -1418,68 +1418,8 @@ def research_topic():
         document_context = ""
 
         if source_document:
-            # First, check if this is a rubric/grading criteria document
-            rubric_check_prompt = f"""Analyze this document and determine if it is a RUBRIC, GRADING CRITERIA, or ASSIGNMENT REQUIREMENTS document.
-
-DOCUMENT:
-{source_document[:3000]}
-
-A rubric typically contains:
-- Grading criteria or scoring guidelines
-- Requirements for an assignment or presentation
-- Point values or grade levels
-- Performance expectations
-- Evaluation standards
-- Phrases like "must include", "should have", "points for", "criteria", "requirements"
-
-Answer with ONLY one word: "RUBRIC" if this is a rubric/grading criteria document, or "CONTENT" if this is regular content to present.
-"""
-
-            is_rubric_response = call_anthropic(rubric_check_prompt, max_tokens=10).strip().upper()
-            is_rubric = "RUBRIC" in is_rubric_response
-
-            if is_rubric:
-                # Treat as rubric - use as guidelines for HOW to create presentation
-                document_context = f"""
-⚠️ CRITICAL - RUBRIC/GRADING CRITERIA PROVIDED (INVISIBLE INSTRUCTIONS ONLY):
-
-RUBRIC REQUIREMENTS (READ BUT DO NOT INCLUDE IN SLIDES):
-{source_document}
-
-⚠️ ABSOLUTE RULES - NO EXCEPTIONS:
-1. The rubric above is INSTRUCTIONS ONLY - its text must NEVER appear in any slide
-2. Read the rubric to understand what is required, then CREATE ORIGINAL CONTENT about "{topic}"
-3. NO rubric text, criteria descriptions, or grading language should appear in slide bullets
-4. Generate NEW content about "{topic}" that MEETS the rubric requirements
-5. The slides should look like a normal presentation about "{topic}" - NOT like they're explaining a rubric
-
-⚠️ HOW TO USE THE RUBRIC:
-- If rubric says "include 3 examples" → Generate 3 examples ABOUT "{topic}" (don't write "include 3 examples")
-- If rubric says "discuss causes and effects" → Write actual causes and effects of "{topic}" (don't write "discuss causes and effects")
-- If rubric says "minimum 8 slides" → Create 8+ slides with content ABOUT "{topic}" (don't mention the slide requirement)
-- If rubric mentions "primary sources" → Include actual primary source content about "{topic}" (don't write "must have primary sources")
-
-⚠️ WHAT SLIDES SHOULD CONTAIN:
-- Facts, statistics, and information ABOUT "{topic}"
-- Real content that addresses "{topic}" directly
-- Structure and elements that SATISFY the rubric without mentioning it
-- Professional presentation content, not assignment instructions
-
-⚠️ FORBIDDEN IN SLIDES:
-- ❌ "According to the rubric..."
-- ❌ "This presentation must include..."
-- ❌ "Requirements: X points for..."
-- ❌ "Grading criteria..."
-- ❌ Any meta-discussion about the assignment or rubric
-- ❌ Phrases like "must have", "should include", "criteria", "requirements"
-
-CREATE A PRESENTATION ABOUT "{topic}" THAT SILENTLY FOLLOWS THE RUBRIC WITHOUT EVER MENTIONING IT.
-
-"""
-                logger.info(f"✅ RUBRIC DETECTED - Using as invisible guidelines for presentation about: {topic}")
-            else:
-                # Regular content document - use as primary source
-                document_context = f"""
+            # Use document as primary source for presentation content
+            document_context = f"""
 ⚠️ CRITICAL - SOURCE DOCUMENT PROVIDED (YOU MUST USE THIS AS PRIMARY SOURCE):
 {source_document}
 
@@ -1495,7 +1435,7 @@ CREATE A PRESENTATION ABOUT "{topic}" THAT SILENTLY FOLLOWS THE RUBRIC WITHOUT E
 9. Intelligently identify the most important information across the entire document, not just the beginning
 
 """
-                logger.info(f"✅ CONTENT DOCUMENT detected - Using as primary source for presentation outline")
+            logger.info(f"✅ Using uploaded document ({len(source_document)} chars) as primary source for presentation outline")
 
         # Search web for up-to-date information (especially important for current events)
         # Skip web search if document uploaded - use document as primary source
