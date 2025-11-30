@@ -463,8 +463,14 @@ def search_tavily(query, max_results=5):
     Returns list of search results or empty list if unavailable/fails.
     """
     if not TAVILY_API_KEY:
-        logger.debug("Tavily not configured, skipping web search")
+        logger.warning("⚠️  Tavily API key not configured - skipping web search. Set TAVILY_API_KEY environment variable.")
         return []
+
+    if TAVILY_API_KEY == "your_tavily_api_key_here":
+        logger.warning("⚠️  Tavily API key is placeholder - please replace with actual key")
+        return []
+
+    logger.info(f"🔍 Searching web via Tavily for: {query[:50]}...")
 
     try:
         response = requests.post(
@@ -482,14 +488,18 @@ def search_tavily(query, max_results=5):
 
         if response.status_code == 200:
             data = response.json()
-            logger.info(f"✅ Tavily search successful for: {query[:50]}")
-            return data.get('results', [])
+            results = data.get('results', [])
+            logger.info(f"✅ Tavily search successful - found {len(results)} results for: {query[:50]}")
+            return results
         else:
-            logger.warning(f"Tavily search failed: {response.status_code}")
+            logger.error(f"❌ Tavily search failed with status {response.status_code}: {response.text[:200]}")
             return []
 
+    except requests.exceptions.Timeout:
+        logger.error(f"❌ Tavily search timed out after 10 seconds for: {query[:50]}")
+        return []
     except Exception as e:
-        logger.warning(f"Tavily search error (continuing without): {str(e)}")
+        logger.error(f"❌ Tavily search error for '{query[:50]}': {type(e).__name__} - {str(e)}")
         return []
 
 def proofread_speaker_notes(notes_text, max_tokens=2200):
@@ -1401,7 +1411,7 @@ def research_topic():
         
         logger.info(f"User {user_id} researching: {topic[:50]}")
 
-        # Optional: Search web for up-to-date information (doesn't break if unavailable)
+        # Search web for up-to-date information (especially important for current events)
         web_context = ""
         search_results = search_tavily(topic, max_results=3)
 
@@ -1411,14 +1421,19 @@ def research_topic():
             for idx, result in enumerate(search_results[:3], 1):
                 title = result.get('title', 'No title')
                 content = result.get('content', '')[:300]  # Limit content length
-                web_info.append(f"{idx}. {title}\n   {content}")
+                url = result.get('url', '')
+                web_info.append(f"{idx}. {title}\n   Source: {url}\n   {content}")
 
             web_context = f"""
 CURRENT WEB INFORMATION (use this to ensure accuracy and recency):
 {chr(10).join(web_info)}
 
+IMPORTANT: Use the above current information to create an accurate, up-to-date presentation. Include specific facts, dates, and details from these sources.
+
 """
-            logger.info(f"Including web search context from {len(search_results)} sources")
+            logger.info(f"✅ Including web search context from {len(search_results)} sources in presentation research")
+        else:
+            logger.warning(f"⚠️  No web search results - presentation will use AI knowledge only (may be outdated for current events)")
 
         # Generate outline (with optional web context)
         prompt = f"""Create a detailed outline for a {num_slides}-slide presentation on: {topic}
