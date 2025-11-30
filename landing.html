@@ -765,8 +765,8 @@
                         return;
                     }
                     const currentTime = splashPlayer.getCurrentTime();
-                    // Fade out 4 seconds before end
-                    if (duration - currentTime < 4) {
+                    // Fade out 2 seconds before end
+                    if (duration - currentTime < 2) {
                         splashFaded = true;
                         fadeSplashToHomepage();
                         clearInterval(checkTime);
