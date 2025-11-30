@@ -561,7 +561,7 @@
                 <li><a href="#how-it-works">How It Works</a></li>
             </ul>
             <div class="nav-buttons">
-                <a href="/app.html" class="btn btn-secondary" id="sign-in-btn">Sign In</a>
+                <a href="/app.html" class="btn btn-secondary" id="sign-in-btn" onclick="handleSignInClick(event)">Sign In</a>
                 <a href="/subscribe.html" class="btn btn-primary" id="get-started-btn" onclick="handleCTAClick(event)">Get Started</a>
                 <button id="cancel-subscription-btn" class="btn" style="display: none; background: #dc3545; color: white;" onclick="cancelSubscription()">Cancel Subscription</button>
             </div>
@@ -889,6 +889,36 @@
             } catch (error) {
                 // Network error, default to subscribe page
                 window.location.href = '/subscribe.html';
+            }
+        }
+
+        // Handle Sign In / Go to App button clicks
+        async function handleSignInClick(event) {
+            event.preventDefault();
+
+            try {
+                const response = await fetch(`${API_URL}/api/auth/me`, {
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const user = data.user;
+
+                    // If user is subscribed, take them to the app
+                    if (user.subscription_status === 'active' || user.subscription_status === 'premium') {
+                        window.location.href = '/app.html';
+                    } else {
+                        // User is logged in but not subscribed
+                        window.location.href = '/subscribe.html';
+                    }
+                } else {
+                    // User not authenticated, take them to login
+                    window.location.href = '/login.html';
+                }
+            } catch (error) {
+                // Network error, default to login page
+                window.location.href = '/login.html';
             }
         }
 
