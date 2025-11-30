@@ -29,7 +29,7 @@
             line-height: 1.6;
         }
 
-        /* Splash Screen Video */
+        /* Splash Screen Logo */
         .splash-screen {
             position: fixed;
             top: 0;
@@ -37,8 +37,10 @@
             width: 100%;
             height: 100%;
             z-index: 9999;
-            background: #000;
-            overflow: hidden;
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             transition: opacity 1s ease-out;
         }
 
@@ -47,64 +49,16 @@
             pointer-events: none;
         }
 
-        .splash-loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #fbbf24;
-            font-size: 1.2rem;
-            text-align: center;
-            z-index: 10000;
+        #splash-logo {
+            max-width: 80%;
+            max-height: 80%;
+            object-fit: contain;
+            animation: fadeIn 0.5s ease-in;
         }
 
-        .splash-loading .spinner {
-            border: 4px solid rgba(251, 191, 36, 0.3);
-            border-top: 4px solid #fbbf24;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
-        }
-
-        .skip-button {
-            position: absolute;
-            bottom: 2rem;
-            right: 2rem;
-            background: rgba(251, 191, 36, 0.2);
-            border: 2px solid #fbbf24;
-            color: #fbbf24;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            font-size: 1rem;
-            cursor: pointer;
-            z-index: 10001;
-            transition: all 0.3s;
-            pointer-events: all;
-        }
-
-        .skip-button:hover {
-            background: #fbbf24;
-            color: #000;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .splash-screen #splash-player,
-        .splash-screen #splash-player iframe {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 100vw;
-            height: 56.25vw; /* 16:9 aspect ratio */
-            min-height: 100vh;
-            min-width: 177.77vh; /* 16:9 aspect ratio */
-            transform: translate(-50%, -50%) scale(1.1);
-            pointer-events: none;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
         }
 
         /* Header */
@@ -596,12 +550,7 @@
 <body>
     <!-- Splash Screen -->
     <div class="splash-screen" id="splash-screen">
-        <div id="splash-player"></div>
-        <div class="splash-loading" id="splash-loading">
-            <div class="spinner"></div>
-            <p>Loading...</p>
-        </div>
-        <button class="skip-button" onclick="skipSplash()">Skip Intro</button>
+        <img src="/phonto21.jpg" alt="PresPilot Logo" id="splash-logo">
     </div>
 
     <!-- Header -->
@@ -758,118 +707,27 @@
 
         let currentUserStatus = null;
 
-        // YouTube Player API for splash screen
-        let splashPlayer;
-        let splashFaded = false;
-
-        // Check if user has already seen splash video this session
+        // Splash screen logo logic
         const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
 
         if (hasSeenSplash === 'true') {
-            // Skip splash video if already seen
-            console.log('User has seen splash - skipping intro');
-            fadeSplashToHomepage();
+            // Skip splash if already seen this session
+            document.getElementById('splash-screen').style.display = 'none';
         } else {
-            // Auto-skip splash after 1 second if video doesn't load
+            // Show logo for 2 seconds, then fade to homepage
             setTimeout(() => {
-                if (!splashFaded) {
-                    console.log('Splash video timeout - auto-skipping to homepage');
-                    fadeSplashToHomepage();
-                }
-            }, 1000);
+                const splashScreen = document.getElementById('splash-screen');
+                splashScreen.classList.add('fade-out');
+
+                // Mark that user has seen the splash
+                sessionStorage.setItem('hasSeenSplash', 'true');
+
+                // Remove splash screen after fade completes
+                setTimeout(() => {
+                    splashScreen.style.display = 'none';
+                }, 1000);
+            }, 2000);
         }
-
-        function onYouTubeIframeAPIReady() {
-            // Create splash screen video first
-            splashPlayer = new YT.Player('splash-player', {
-                host: 'https://www.youtube-nocookie.com',
-                videoId: 't62GZrROZ3g',
-                playerVars: {
-                    autoplay: 1,
-                    mute: 1,
-                    controls: 0,
-                    showinfo: 0,
-                    rel: 0,
-                    modestbranding: 1,
-                    playsinline: 1,
-                    iv_load_policy: 3,
-                    disablekb: 1,
-                    fs: 0,
-                    cc_load_policy: 0,
-                    origin: window.location.origin
-                },
-                events: {
-                    'onReady': onSplashReady,
-                    'onStateChange': onSplashStateChange,
-                    'onError': onSplashError
-                }
-            });
-
-            // Background video removed - using gradient only
-        }
-
-        function onSplashReady(event) {
-            // Hide loading indicator
-            const loadingEl = document.getElementById('splash-loading');
-            if (loadingEl) {
-                loadingEl.style.display = 'none';
-            }
-
-            // Ensure mute is set before playing
-            event.target.mute();
-            event.target.playVideo();
-        }
-
-        function onSplashError(event) {
-            console.error('Splash video error:', event.data);
-            // Auto-fade to homepage immediately if splash video fails
-            fadeSplashToHomepage();
-        }
-
-        function skipSplash() {
-            fadeSplashToHomepage();
-        }
-
-        function onSplashStateChange(event) {
-            // Monitor video time and fade out before it ends (to prevent play button)
-            if (event.data == YT.PlayerState.PLAYING && !splashFaded) {
-                const duration = splashPlayer.getDuration();
-                const checkTime = setInterval(() => {
-                    if (splashFaded) {
-                        clearInterval(checkTime);
-                        return;
-                    }
-                    const currentTime = splashPlayer.getCurrentTime();
-                    // Fade out 2 seconds before end to prevent play button
-                    if (duration - currentTime < 2) {
-                        splashFaded = true;
-                        fadeSplashToHomepage();
-                        clearInterval(checkTime);
-                    }
-                }, 100);
-            }
-        }
-
-        function fadeSplashToHomepage() {
-            const splashScreen = document.getElementById('splash-screen');
-            splashScreen.classList.add('fade-out');
-
-            // Mark that user has seen the splash video
-            sessionStorage.setItem('hasSeenSplash', 'true');
-
-            // Remove splash screen after fade completes
-            setTimeout(() => {
-                splashScreen.style.display = 'none';
-            }, 1000);
-        }
-
-        // Background video functions removed - using gradient only
-
-        // Load YouTube API
-        const tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        const firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
         // Check authentication on page load
         window.addEventListener('load', async () => {
