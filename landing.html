@@ -943,12 +943,12 @@
                         window.location.href = '/subscribe.html';
                     }
                 } else {
-                    // User not authenticated, take them to login
-                    window.location.href = '/login.html';
+                    // User not authenticated, take them to app (which has sign-in page)
+                    window.location.href = '/app.html';
                 }
             } catch (error) {
-                // Network error, default to login page
-                window.location.href = '/login.html';
+                // Network error, default to app page
+                window.location.href = '/app.html';
             }
         }
 
