@@ -1725,12 +1725,15 @@ KEY POINTS TO COVER:
 Write natural, conversational speaker notes (3-4 sentences) that provide context and explanation for these key points. Similar to detailed notes but more concise.
 
 IMPORTANT RULES:
+- Use THIRD-PERSON, OBJECTIVE language (no "we", "our", "us" unless the source document uses first person)
+- Write as an objective narrator describing facts and information
+- Example: "Inter Miami has achieved..." NOT "We have achieved..."
 - Naturally incorporate 1-2 of these transition words (choose different ones each time): {', '.join(selected_transitions)}
 - Provide context, examples, or explanations that supplement the slide content
-- Be conversational and engaging
+- Be conversational and engaging, but objective
 - Use complete, flowing sentences
 - NEVER use generic phrases like "these elements work together" or "comprehensive understanding"
-- Make it sound like natural speech, not a list
+- Make it sound like natural speech from an objective narrator, not a list
 
 {document_context}
 
@@ -1739,6 +1742,8 @@ Speaker notes:"""
             prompt = f"""Write detailed speaker notes for a presentation slide titled "{slide_title}".
 
 Write a natural, conversational paragraph (5-7 sentences) that provides context, insights, and examples for this slide.
+
+CRITICAL: Use THIRD-PERSON, OBJECTIVE language. Write as an objective narrator describing facts and information. Do NOT use first person ("we", "our", "us") unless the source document specifically uses first person. Example: "The company has..." NOT "We have..."
 
 {document_context}
 
@@ -1880,6 +1885,8 @@ Key points to cover:
 {facts_text}
 
 Write a natural, conversational paragraph (5-7 sentences) that provides context, insights, and examples for these points.
+
+IMPORTANT: Use THIRD-PERSON, OBJECTIVE language (write as an objective narrator). Do NOT use first person ("we", "our", "us") unless the key points above are clearly written in first person from a company/organization perspective.
 
 Speaker notes:"""
 
