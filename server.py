@@ -1442,10 +1442,12 @@ IMPORTANT: Use the above current information to create an accurate, up-to-date p
 1. Create EXACTLY {num_slides} sections (one per slide)
 2. Each section title must be VERY SHORT - MAXIMUM 2 WORDS (like "Overview", "Key Benefits", "Statistics", "Implementation", "Results")
 3. Each section must have 3-4 key points
-4. Each key point MUST be a COMPLETE SENTENCE (12-20 words)
+4. Each key point MUST be a COMPLETE, GRAMMATICALLY CORRECT SENTENCE (12-20 words)
 5. Key points must be SPECIFIC - include numbers, examples, names, dates when relevant
 6. NO repetition between sections - each section covers a DIFFERENT aspect
 7. Each key point should be informative but concise enough to fit on a slide
+8. IMPORTANT: Use proper grammar, spelling, and punctuation in all sentences
+9. If using current web information above, ensure facts are accurate and properly attributed
 
 Return ONLY valid JSON (no markdown, no ```json):
 {{
@@ -1455,7 +1457,7 @@ Return ONLY valid JSON (no markdown, no ```json):
   ]
 }}
 
-Make it comprehensive, professional, and ensure each section is DISTINCT with VERY SHORT titles."""
+Make it comprehensive, professional, grammatically perfect, and ensure each section is DISTINCT with VERY SHORT titles."""
         
         response = call_anthropic(prompt, max_tokens=3000)
         response = response.replace('```json\n', '').replace('\n```', '').replace('```', '').strip()
@@ -1471,6 +1473,17 @@ Make it comprehensive, professional, and ensure each section is DISTINCT with VE
         # Try to parse JSON with better error handling
         try:
             result = json.loads(response)
+
+            # Proofread all facts for grammar and clarity
+            for section in result.get('sections', []):
+                if 'facts' in section:
+                    proofread_facts = []
+                    for fact in section['facts']:
+                        # Proofread each fact to ensure proper grammar
+                        proofread_fact = proofread_slide_text(fact, max_tokens=100)
+                        proofread_facts.append(proofread_fact)
+                    section['facts'] = proofread_facts
+
         except json.JSONDecodeError as e:
             # Log the malformed JSON for debugging
             logger.error(f"JSON parsing error: {str(e)}")
