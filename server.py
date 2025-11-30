@@ -1441,27 +1441,42 @@ Answer with ONLY one word: "RUBRIC" if this is a rubric/grading criteria documen
             if is_rubric:
                 # Treat as rubric - use as guidelines for HOW to create presentation
                 document_context = f"""
-⚠️ CRITICAL - RUBRIC/GRADING CRITERIA PROVIDED (USE AS GUIDELINES, NOT CONTENT):
+⚠️ CRITICAL - RUBRIC/GRADING CRITERIA PROVIDED (INVISIBLE INSTRUCTIONS ONLY):
 
-RUBRIC DOCUMENT:
+RUBRIC REQUIREMENTS (READ BUT DO NOT INCLUDE IN SLIDES):
 {source_document}
 
-⚠️ MANDATORY INSTRUCTIONS FOR RUBRIC-BASED PRESENTATIONS:
-1. The document above is a RUBRIC/GRADING CRITERIA - DO NOT create a presentation ABOUT the rubric itself
-2. The topic "{topic}" is what the presentation should be ABOUT
-3. USE the rubric as GUIDELINES for HOW to structure and create the presentation
-4. Follow any requirements specified in the rubric (e.g., number of slides, required sections, must include X, etc.)
-5. Meet the criteria and standards outlined in the rubric
-6. If the rubric specifies certain elements must be included (sources, statistics, examples, etc.), include them in the presentation about "{topic}"
-7. Create a presentation about "{topic}" that would RECEIVE A HIGH GRADE according to this rubric
-8. DO NOT explain the rubric - FOLLOW it to create excellent content about "{topic}"
+⚠️ ABSOLUTE RULES - NO EXCEPTIONS:
+1. The rubric above is INSTRUCTIONS ONLY - its text must NEVER appear in any slide
+2. Read the rubric to understand what is required, then CREATE ORIGINAL CONTENT about "{topic}"
+3. NO rubric text, criteria descriptions, or grading language should appear in slide bullets
+4. Generate NEW content about "{topic}" that MEETS the rubric requirements
+5. The slides should look like a normal presentation about "{topic}" - NOT like they're explaining a rubric
 
-Example: If rubric says "must include 3 primary sources" → Include 3 primary sources about "{topic}"
-Example: If rubric says "discuss causes and effects" → Structure the presentation about "{topic}" to discuss causes and effects
-Example: If rubric says "minimum 8 slides" → Create at least 8 slides about "{topic}"
+⚠️ HOW TO USE THE RUBRIC:
+- If rubric says "include 3 examples" → Generate 3 examples ABOUT "{topic}" (don't write "include 3 examples")
+- If rubric says "discuss causes and effects" → Write actual causes and effects of "{topic}" (don't write "discuss causes and effects")
+- If rubric says "minimum 8 slides" → Create 8+ slides with content ABOUT "{topic}" (don't mention the slide requirement)
+- If rubric mentions "primary sources" → Include actual primary source content about "{topic}" (don't write "must have primary sources")
+
+⚠️ WHAT SLIDES SHOULD CONTAIN:
+- Facts, statistics, and information ABOUT "{topic}"
+- Real content that addresses "{topic}" directly
+- Structure and elements that SATISFY the rubric without mentioning it
+- Professional presentation content, not assignment instructions
+
+⚠️ FORBIDDEN IN SLIDES:
+- ❌ "According to the rubric..."
+- ❌ "This presentation must include..."
+- ❌ "Requirements: X points for..."
+- ❌ "Grading criteria..."
+- ❌ Any meta-discussion about the assignment or rubric
+- ❌ Phrases like "must have", "should include", "criteria", "requirements"
+
+CREATE A PRESENTATION ABOUT "{topic}" THAT SILENTLY FOLLOWS THE RUBRIC WITHOUT EVER MENTIONING IT.
 
 """
-                logger.info(f"✅ RUBRIC DETECTED - Using as guidelines for presentation about: {topic}")
+                logger.info(f"✅ RUBRIC DETECTED - Using as invisible guidelines for presentation about: {topic}")
             else:
                 # Regular content document - use as primary source
                 document_context = f"""
