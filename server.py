@@ -1425,20 +1425,30 @@ def research_topic():
                 web_info.append(f"{idx}. {title}\n   Source: {url}\n   {content}")
 
             web_context = f"""
-CURRENT WEB INFORMATION (use this to ensure accuracy and recency):
+⚠️ CRITICAL - CURRENT WEB INFORMATION FROM {datetime.now().year} (YOU MUST USE THIS):
 {chr(10).join(web_info)}
 
-IMPORTANT: Use the above current information to create an accurate, up-to-date presentation. Include specific facts, dates, and details from these sources.
+⚠️ MANDATORY REQUIREMENTS FOR WEB INFORMATION:
+1. You MUST use the information above from the web search results
+2. DO NOT use outdated information from your training data if web results are provided
+3. Include specific facts, dates, names, and statistics from the web sources above
+4. If the topic involves current events (2025 or recent past), ONLY use the web information
+5. Your presentation must reflect what is actually happening NOW, not predictions or past information
 
 """
             logger.info(f"✅ Including web search context from {len(search_results)} sources in presentation research")
         else:
             logger.warning(f"⚠️  No web search results - presentation will use AI knowledge only (may be outdated for current events)")
 
-        # Generate outline (with optional web context)
+        # Generate outline with web context (if available)
+        web_instruction = ""
+        if search_results:
+            web_instruction = "\n⚠️ CRITICAL: Current web information is provided above. You MUST base your presentation on this current information, NOT on your training data. Use specific facts, dates, and details from the web sources.\n"
+
         prompt = f"""Create a detailed outline for a {num_slides}-slide presentation on: {topic}
 
-{web_context}CRITICAL REQUIREMENTS:
+{web_context}{web_instruction}
+CRITICAL REQUIREMENTS:
 1. Create EXACTLY {num_slides} sections (one per slide)
 2. Each section title must be VERY SHORT - MAXIMUM 2 WORDS (like "Overview", "Key Benefits", "Statistics", "Implementation", "Results")
 3. Each section must have 3-4 key points
@@ -1447,7 +1457,7 @@ IMPORTANT: Use the above current information to create an accurate, up-to-date p
 6. NO repetition between sections - each section covers a DIFFERENT aspect
 7. Each key point should be informative but concise enough to fit on a slide
 8. IMPORTANT: Use proper grammar, spelling, and punctuation in all sentences
-9. If using current web information above, ensure facts are accurate and properly attributed
+9. If web information is provided above, you MUST prioritize it over your training data - use the current facts, not outdated predictions
 
 Return ONLY valid JSON (no markdown, no ```json):
 {{
