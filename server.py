@@ -2009,6 +2009,11 @@ def serve_theme_preview(filename):
     """Serve theme preview images"""
     return send_from_directory('theme-previews', filename)
 
+@app.route('/phonto21.jpg')
+def serve_logo():
+    """Serve splash screen logo"""
+    return send_from_directory('.', 'phonto21.jpg', mimetype='image/jpeg')
+
 # ============= Utility Endpoints =============
 
 @app.route('/health', methods=['GET'])
