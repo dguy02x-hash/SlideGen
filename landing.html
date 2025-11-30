@@ -735,11 +735,13 @@
                     iv_load_policy: 3,
                     disablekb: 1,
                     fs: 0,
-                    cc_load_policy: 0
+                    cc_load_policy: 0,
+                    origin: window.location.origin
                 },
                 events: {
                     'onReady': onSplashReady,
-                    'onStateChange': onSplashStateChange
+                    'onStateChange': onSplashStateChange,
+                    'onError': onSplashError
                 }
             });
 
@@ -758,17 +760,30 @@
                     iv_load_policy: 3,
                     disablekb: 1,
                     fs: 0,
-                    cc_load_policy: 0
+                    cc_load_policy: 0,
+                    origin: window.location.origin,
+                    enablejsapi: 1
                 },
                 events: {
                     'onReady': onPlayerReady,
-                    'onStateChange': onPlayerStateChange
+                    'onStateChange': onPlayerStateChange,
+                    'onError': onPlayerError
                 }
             });
         }
 
         function onSplashReady(event) {
+            // Ensure mute is set before playing
+            event.target.mute();
             event.target.playVideo();
+        }
+
+        function onSplashError(event) {
+            console.error('Splash video error:', event.data);
+            // Auto-fade to homepage if splash video fails
+            setTimeout(() => {
+                fadeSplashToHomepage();
+            }, 1000);
         }
 
         function onSplashStateChange(event) {
@@ -802,11 +817,26 @@
         }
 
         function onPlayerReady(event) {
-            event.target.playVideo();
+            // Ensure mute is set before playing
+            event.target.mute();
+            event.target.setVolume(0);
+
+            // Try to play the video
+            const playPromise = event.target.playVideo();
+
             // Show video after it starts playing
             setTimeout(() => {
                 document.getElementById('youtube-player').classList.add('loaded');
             }, 1000);
+        }
+
+        function onPlayerError(event) {
+            console.error('Background video error:', event.data);
+            // Keep gradient background visible, hide video player on error
+            const videoElement = document.getElementById('youtube-player');
+            if (videoElement) {
+                videoElement.style.display = 'none';
+            }
         }
 
         function onPlayerStateChange(event) {
