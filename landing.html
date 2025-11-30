@@ -770,6 +770,7 @@
         let splashPlayer;
         let splashFaded = false;
         let bgLoopInterval = null;
+        let bgVideoLoaded = false;
 
         // Check if user has already seen splash video this session
         const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
@@ -839,6 +840,17 @@
                     'onError': onPlayerError
                 }
             });
+
+            // Auto-hide background video after 1 second if it doesn't load
+            setTimeout(() => {
+                if (!bgVideoLoaded) {
+                    console.log('Background video timeout - showing gradient only');
+                    const videoElement = document.getElementById('youtube-player');
+                    if (videoElement) {
+                        videoElement.style.display = 'none';
+                    }
+                }
+            }, 1000);
         }
 
         function onSplashReady(event) {
@@ -897,6 +909,9 @@
         }
 
         function onPlayerReady(event) {
+            // Mark that video loaded successfully
+            bgVideoLoaded = true;
+
             // Ensure mute is set before playing
             event.target.mute();
             event.target.setVolume(0);
