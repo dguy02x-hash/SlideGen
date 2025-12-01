@@ -820,7 +820,7 @@
             }
         });
 
-        // Handle CTA button clicks - check subscription status and redirect accordingly
+        // Handle Get Started / Create Account button - takes to subscribe page if not subscribed
         async function handleCTAClick(event) {
             event.preventDefault();
 
@@ -833,51 +833,28 @@
                     const data = await response.json();
                     const user = data.user;
 
-                    // If user is subscribed, take them directly to the app
+                    // Only go to app if user has active subscription
                     if (user.subscription_status === 'active' || user.subscription_status === 'premium') {
                         window.location.href = '/app.html';
                     } else {
-                        // User is logged in but not subscribed, take them to subscribe page
+                        // User is logged in but not subscribed - take them to subscribe page
                         window.location.href = '/subscribe.html';
                     }
                 } else {
-                    // User not authenticated, take them to subscribe page
+                    // User not authenticated - take them to subscribe page to create account
                     window.location.href = '/subscribe.html';
                 }
             } catch (error) {
-                // Network error, default to subscribe page
+                // Network error - default to subscribe page
                 window.location.href = '/subscribe.html';
             }
         }
 
-        // Handle Sign In / Go to App button clicks
-        async function handleSignInClick(event) {
+        // Handle Sign In button - ALWAYS go to sign in page
+        function handleSignInClick(event) {
             event.preventDefault();
-
-            try {
-                const response = await fetch(`${API_URL}/api/auth/me`, {
-                    credentials: 'include'
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    const user = data.user;
-
-                    // If user is subscribed, take them to the app
-                    if (user.subscription_status === 'active' || user.subscription_status === 'premium') {
-                        window.location.href = '/app.html';
-                    } else {
-                        // User is logged in but not subscribed
-                        window.location.href = '/subscribe.html';
-                    }
-                } else {
-                    // User not authenticated, take them to app (which has sign-in page)
-                    window.location.href = '/app.html';
-                }
-            } catch (error) {
-                // Network error, default to app page
-                window.location.href = '/app.html';
-            }
+            // Always take users to the sign-in page, no matter what
+            window.location.href = '/app.html';
         }
 
         async function cancelSubscription() {

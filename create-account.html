@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify Your Account - PresPilot</title>
+    <title>Create Your Account - PresPilot</title>
     <style>
         * {
             margin: 0;
@@ -52,6 +52,17 @@
             line-height: 1.5;
         }
 
+        .success-badge {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            font-weight: 600;
+        }
+
         .message {
             padding: 1rem;
             border-radius: 0.5rem;
@@ -71,10 +82,8 @@
             border: 1px solid #a7f3d0;
         }
 
-        .message.info {
-            background: #dbeafe;
-            color: #1e40af;
-            border: 1px solid #bfdbfe;
+        .hidden {
+            display: none;
         }
 
         .form-group {
@@ -102,12 +111,9 @@
             border-color: #f59e0b;
         }
 
-        .form-group input[type="text"]#code {
-            text-align: center;
-            font-size: 1.5rem;
-            letter-spacing: 8px;
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
+        .form-group input[readonly] {
+            background-color: #f3f4f6;
+            cursor: not-allowed;
         }
 
         .password-requirements {
@@ -156,10 +162,6 @@
             100% { transform: rotate(360deg); }
         }
 
-        .hidden {
-            display: none;
-        }
-
         .back-link {
             text-align: center;
             margin-top: 2rem;
@@ -176,50 +178,45 @@
         .back-link a:hover {
             opacity: 1;
         }
-
-        .help-text {
-            background: rgba(251, 191, 36, 0.1);
-            border: 1px solid rgba(251, 191, 36, 0.3);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            font-size: 0.95rem;
-            color: #1f2937;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="card">
             <div class="header">
-                <h1>Verify Your Subscription</h1>
-                <p>Enter the 6-digit code from your email to verify your subscription</p>
+                <h1>Create Your Account</h1>
+                <p>Set a password to complete your registration</p>
+            </div>
+
+            <div class="success-badge">
+                ✅ Email verified successfully!
             </div>
 
             <div id="message" class="message hidden"></div>
 
-            <div class="help-text">
-                📧 Check your email for a message from PresPilot containing your 6-digit verification code
-            </div>
-
-            <form id="verification-form">
+            <form id="account-form">
                 <div class="form-group">
                     <label for="email">Email Address</label>
-                    <input type="email" id="email" name="email" required placeholder="you@example.com" readonly style="background-color: #f3f4f6; cursor: not-allowed;">
+                    <input type="email" id="email" name="email" required readonly>
                     <div class="password-requirements">
-                        This is the email used during subscription
+                        Your verified email address
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="code">Verification Code</label>
-                    <input type="text" id="code" name="code" required maxlength="6" placeholder="000000" pattern="[0-9]{6}">
+                    <label for="password">Create Password</label>
+                    <input type="password" id="password" name="password" required minlength="8" placeholder="At least 8 characters">
                     <div class="password-requirements">
-                        Enter the 6-digit code from your email - must match exactly
+                        At least 8 characters required
                     </div>
                 </div>
 
-                <button type="submit" id="submit-btn" class="btn">Verify Code & Continue</button>
+                <div class="form-group">
+                    <label for="confirm-password">Confirm Password</label>
+                    <input type="password" id="confirm-password" name="confirm-password" required minlength="8" placeholder="Re-enter password">
+                </div>
+
+                <button type="submit" id="submit-btn" class="btn">Create Account</button>
             </form>
 
             <div class="back-link">
@@ -234,15 +231,22 @@
             : window.location.origin;
 
         const messageDiv = document.getElementById('message');
-        const verificationForm = document.getElementById('verification-form');
+        const accountForm = document.getElementById('account-form');
         const emailInput = document.getElementById('email');
-        const codeInput = document.getElementById('code');
         const submitBtn = document.getElementById('submit-btn');
 
-        // Pre-fill email from URL if provided
+        // Get email from URL parameter
         const urlParams = new URLSearchParams(window.location.search);
         const emailParam = urlParams.get('email');
-        if (emailParam) {
+
+        // Check if email exists in URL and session is valid
+        if (!emailParam) {
+            // No email in URL - redirect back to verification page
+            showMessage('Session expired. Please verify your code again.', 'error');
+            setTimeout(() => {
+                window.location.href = '/confirm-email.html';
+            }, 2000);
+        } else {
             emailInput.value = emailParam;
         }
 
@@ -256,71 +260,59 @@
             messageDiv.classList.add('hidden');
         }
 
-        // Auto-format code input (numbers only)
-        codeInput.addEventListener('input', (e) => {
-            e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
-        });
-
         // Handle form submission
-        verificationForm.addEventListener('submit', async (e) => {
+        accountForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const email = emailInput.value.trim().toLowerCase();
-            const code = codeInput.value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
 
-            // Validate code format
-            if (!/^\d{6}$/.test(code)) {
-                showMessage('Verification code must be 6 digits.', 'error');
+            // Validate passwords match
+            if (password !== confirmPassword) {
+                showMessage('Passwords do not match. Please try again.', 'error');
+                return;
+            }
+
+            // Validate password length
+            if (password.length < 8) {
+                showMessage('Password must be at least 8 characters long.', 'error');
                 return;
             }
 
             submitBtn.disabled = true;
-            submitBtn.innerHTML = 'Verifying Code<span class="loading"></span>';
+            submitBtn.innerHTML = 'Creating Account<span class="loading"></span>';
             hideMessage();
 
             try {
-                const response = await fetch(`${API_URL}/api/auth/check-verification-code`, {
+                // Get email and code from session (stored during verification)
+                const response = await fetch(`${API_URL}/api/auth/create-account-with-session`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     credentials: 'include',
                     body: JSON.stringify({
-                        email: email,
-                        code: code
+                        password: password
                     })
                 });
 
                 const data = await response.json();
 
-                if (response.ok && data.valid) {
-                    showMessage('✅ Code verified! Redirecting to account creation...', 'success');
+                if (response.ok) {
+                    showMessage('✅ Account created successfully! Redirecting to dashboard...', 'success');
                     setTimeout(() => {
-                        // Redirect to create account page
-                        window.location.href = `/create-account.html?email=${encodeURIComponent(email)}`;
-                    }, 1000);
+                        window.location.href = '/app.html';
+                    }, 1500);
                 } else {
-                    // Provide specific error messages based on the error
-                    let errorMessage = data.error || 'Failed to verify code. Please check and try again.';
-
-                    // Enhance error messages for better clarity
-                    if (errorMessage.includes('Invalid email or verification code')) {
-                        errorMessage = '❌ The verification code does not match. Please check that you entered the correct code from your email.';
-                    } else if (errorMessage.includes('expired')) {
-                        errorMessage = '❌ This verification code has expired (24 hours). Please contact support for a new code.';
-                    } else if (errorMessage.includes('already exists')) {
-                        errorMessage = '❌ An account with this email already exists. Try logging in instead.';
-                    }
-
-                    showMessage(errorMessage, 'error');
+                    showMessage(data.error || 'Failed to create account. Please try again.', 'error');
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'Verify Code & Continue';
+                    submitBtn.textContent = 'Create Account';
                 }
             } catch (error) {
-                console.error('Error verifying code:', error);
+                console.error('Error creating account:', error);
                 showMessage('Network error. Please check your connection and try again.', 'error');
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Verify Code & Continue';
+                submitBtn.textContent = 'Create Account';
             }
         });
     </script>

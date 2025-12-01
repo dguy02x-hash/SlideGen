@@ -1048,6 +1048,153 @@ def complete_registration():
         logger.error(f"Error completing registration: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/auth/check-verification-code', methods=['POST'])
+def check_verification_code():
+    """Check if verification code is valid without creating account yet"""
+    try:
+        data = request.json
+        email = data.get('email', '').strip().lower()
+        code = data.get('code', '').strip()
+
+        if not all([email, code]):
+            return jsonify({'error': 'Email and verification code are required'}), 400
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Get pending subscription by email and code
+        pending = cursor.execute(
+            'SELECT * FROM pending_subscriptions WHERE customer_email = ? AND verification_code = ? AND account_created = 0',
+            (email, code)
+        ).fetchone()
+
+        if not pending:
+            conn.close()
+            return jsonify({'error': 'Invalid email or verification code', 'valid': False}), 400
+
+        # Verify code is not expired
+        token_expires_at = datetime.fromisoformat(pending['token_expires_at'])
+        if datetime.utcnow() > token_expires_at:
+            conn.close()
+            return jsonify({'error': 'Verification code has expired (24 hours)', 'valid': False}), 400
+
+        # Check if email already exists
+        existing = cursor.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
+        if existing:
+            conn.close()
+            return jsonify({'error': 'Account already exists with this email', 'valid': False}), 400
+
+        conn.close()
+
+        # Code is valid! Store in session for account creation
+        session['verified_email'] = email
+        session['verified_code'] = code
+        session.permanent = True
+
+        logger.info(f"Verification code validated for {email}")
+
+        return jsonify({
+            'success': True,
+            'valid': True,
+            'message': 'Verification code is valid',
+            'email': email
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error checking verification code: {str(e)}")
+        return jsonify({'error': str(e), 'valid': False}), 500
+
+@app.route('/api/auth/create-account-with-session', methods=['POST'])
+def create_account_with_session():
+    """Create account using verified email and code from session"""
+    try:
+        data = request.json
+        password = data.get('password')
+
+        if not password:
+            return jsonify({'error': 'Password is required'}), 400
+
+        # Validate password length
+        if len(password) < 8:
+            return jsonify({'error': 'Password must be at least 8 characters'}), 400
+
+        # Get verified email and code from session
+        email = session.get('verified_email')
+        code = session.get('verified_code')
+
+        if not email or not code:
+            return jsonify({'error': 'Session expired. Please verify your code again.'}), 400
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Get pending subscription by email and code
+        pending = cursor.execute(
+            'SELECT * FROM pending_subscriptions WHERE customer_email = ? AND verification_code = ? AND account_created = 0',
+            (email, code)
+        ).fetchone()
+
+        if not pending:
+            conn.close()
+            return jsonify({'error': 'Invalid session. Please verify your code again.'}), 400
+
+        # Verify code is not expired
+        token_expires_at = datetime.fromisoformat(pending['token_expires_at'])
+        if datetime.utcnow() > token_expires_at:
+            conn.close()
+            return jsonify({'error': 'Verification code has expired (24 hours)'}), 400
+
+        # Check if email already exists
+        existing = cursor.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
+        if existing:
+            conn.close()
+            return jsonify({'error': 'Account already exists with this email'}), 400
+
+        # Create user account with premium subscription
+        password_hash = generate_password_hash(password)
+        cursor.execute('''
+            INSERT INTO users
+            (email, password_hash, subscription_status, generations_limit, generations_used,
+             last_reset, stripe_customer_id, stripe_subscription_id)
+            VALUES (?, ?, 'premium', 10, 0, ?, ?, ?)
+        ''', (email, password_hash, datetime.now().isoformat(),
+              pending['stripe_customer_id'], pending['stripe_subscription_id']))
+
+        user_id = cursor.lastrowid
+
+        # Mark pending subscription as completed
+        cursor.execute(
+            'UPDATE pending_subscriptions SET account_created = 1, email_verified = 1 WHERE id = ?',
+            (pending['id'],)
+        )
+
+        conn.commit()
+        conn.close()
+
+        # Clear verification session data
+        session.pop('verified_email', None)
+        session.pop('verified_code', None)
+
+        # Log the user in
+        session['user_id'] = user_id
+        session.permanent = True
+
+        logger.info(f"Account created with verified session for {email}")
+
+        return jsonify({
+            'success': True,
+            'message': 'Account created successfully',
+            'user': {
+                'id': user_id,
+                'email': email,
+                'subscription_status': 'premium'
+            }
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error creating account with session: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/auth/verify-code', methods=['POST'])
 def verify_code():
     """Verify email with code and create account"""
@@ -2032,6 +2179,11 @@ def reset_password_page():
 def confirm_email_page():
     """Serve email confirmation page"""
     return send_from_directory('.', 'confirm-email.html')
+
+@app.route('/create-account.html')
+def create_account_page():
+    """Serve account creation page"""
+    return send_from_directory('.', 'create-account.html')
 
 @app.route('/landing.html')
 def landing_page():
