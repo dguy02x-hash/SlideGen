@@ -1787,9 +1787,11 @@ def upload_document():
         if not extracted_text.strip():
             return jsonify({'error': 'No text could be extracted from the document'}), 400
 
-        # Limit extracted text to reasonable length (100k characters)
-        if len(extracted_text) > 100000:
-            extracted_text = extracted_text[:100000] + "\n\n[Document truncated due to length]"
+        # Limit extracted text to reasonable length (50k characters for better performance)
+        # 50k chars = ~10k words = ~20 pages, which is plenty for presentation context
+        if len(extracted_text) > 50000:
+            logger.warning(f"Document too long ({len(extracted_text)} chars), truncating to 50k for better performance")
+            extracted_text = extracted_text[:50000] + "\n\n[Document truncated to 50,000 characters for optimal processing. Key information should still be included.]"
 
         # Store full document in session for use in speaker notes
         session['source_document'] = extracted_text.strip()
