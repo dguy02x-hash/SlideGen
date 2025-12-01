@@ -87,7 +87,13 @@ else:
     logger.info("✅ Tavily Search configured for up-to-date research")
 
 # Database initialization
-DB_PATH = 'slidegen.db'
+# Use /data/slidegen.db on Render (persistent disk), or slidegen.db locally
+DB_PATH = os.environ.get('DATABASE_PATH', '/data/slidegen.db')
+
+# Ensure the database directory exists
+db_dir = os.path.dirname(DB_PATH)
+if db_dir and not os.path.exists(db_dir):
+    os.makedirs(db_dir, exist_ok=True)
 
 def init_db():
     """Initialize the database with required tables"""
