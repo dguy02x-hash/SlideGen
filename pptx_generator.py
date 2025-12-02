@@ -137,13 +137,13 @@ class ThemeGenerator:
             "layouts": ["right", "left", "top", "bottom"]
         },
         "Iridiscent Glow": {
-            "primary_color": RGBColor(255, 255, 255),  # White
-            "secondary_color": RGBColor(240, 240, 240),  # Light gray
+            "primary_color": RGBColor(0, 119, 182),  # Ocean Blue
+            "secondary_color": RGBColor(173, 216, 230),  # Light Blue
             "text_color": RGBColor(255, 255, 255),  # White text
-            "accent_color": RGBColor(255, 255, 255),  # White
-            "background": RGBColor(0, 0, 0),  # Black (for fallback)
-            "font": "Lobster",
-            "title_font": "Lobster",
+            "accent_color": RGBColor(0, 191, 255),  # Bright Blue
+            "background": RGBColor(0, 91, 150),  # Ocean Blue (for fallback)
+            "font": "Calibri",  # Ocean Blue font
+            "title_font": "Calibri",  # Ocean Blue title font
             "layouts": ["left", "right"]  # Only 2 body backgrounds
         },
         "Notepad and Folder": {
@@ -694,7 +694,7 @@ class ThemeGenerator:
             # Load title background image
             self._add_background_image(slide, "Iridiscent Glow Title.jpg")
 
-            # Title - shiny gray with 3D shadow effect, centered
+            # Title - Ocean Blue white text with 3D shadow effect, centered
             title_box = slide.shapes.add_textbox(
                 Inches(1), Inches(2.5), Inches(8), Inches(1.5)
             )
@@ -714,10 +714,10 @@ class ThemeGenerator:
             p.font.name = self.theme["title_font"]
             p.font.size = Pt(72)
             p.font.bold = True
-            p.font.color.rgb = RGBColor(169, 169, 169)  # Shiny gray
+            p.font.color.rgb = self.theme["text_color"]  # Ocean Blue white text
             p.alignment = PP_ALIGN.CENTER
 
-            # Subtitle - shiny gray with 3D shadow effect, centered below title
+            # Subtitle - Ocean Blue white text with 3D shadow effect, centered below title
             by_box = slide.shapes.add_textbox(
                 Inches(1), Inches(4.2), Inches(8), Inches(0.7)
             )
@@ -736,7 +736,7 @@ class ThemeGenerator:
             p.font.name = self.theme["font"]
             p.font.size = Pt(32)
             p.font.bold = True
-            p.font.color.rgb = RGBColor(169, 169, 169)  # Shiny gray
+            p.font.color.rgb = self.theme["text_color"]  # Ocean Blue white text
 
         elif self.theme_name == "Notepad and Folder":
             # Load title background image
@@ -1695,7 +1695,7 @@ class ThemeGenerator:
         self.layout_index += 1
 
     def _add_iridiscent_glow_content(self, slide, title, bullets):
-        """Iridiscent Glow theme: Alternating left/right layouts with background images and dark grey text"""
+        """Iridiscent Glow theme: Alternating left/right layouts with background images and Ocean Blue text"""
         # Get current layout (cycles through 'left', 'right')
         layout_type = self.theme["layouts"][self.layout_index % len(self.theme["layouts"])]
 
@@ -1725,7 +1725,7 @@ class ThemeGenerator:
         p.font.name = self.theme["title_font"]
         p.font.size = Pt(48)
         p.font.bold = True
-        p.font.color.rgb = RGBColor(169, 169, 169)  # Shiny gray
+        p.font.color.rgb = self.theme["text_color"]  # Ocean Blue white text
         p.alignment = PP_ALIGN.LEFT
 
         # Content and image placement based on layout
@@ -1736,11 +1736,11 @@ class ThemeGenerator:
                 Inches(0.5), Inches(1.8), Inches(3.5), Inches(4.5)
             )
             img_box.fill.solid()
-            img_box.fill.fore_color.rgb = RGBColor(200, 200, 200)  # Light gray
-            img_box.line.color.rgb = RGBColor(50, 50, 50)  # Dark grey border
+            img_box.fill.fore_color.rgb = self.theme["secondary_color"]  # Light blue
+            img_box.line.color.rgb = self.theme["primary_color"]  # Ocean blue border
             img_box.line.width = Pt(3)
 
-            # Bullets on right - shiny gray with 3D shadow effect
+            # Bullets on right - Ocean Blue white text with shadow effect
             y_pos = 2
             for i, bullet in enumerate(bullets[:4]):
                 bullet_box = slide.shapes.add_textbox(
@@ -1762,12 +1762,12 @@ class ThemeGenerator:
                 p.font.name = self.theme["font"]
                 p.font.size = Pt(24)
                 p.font.bold = True
-                p.font.color.rgb = RGBColor(169, 169, 169)  # Shiny gray
+                p.font.color.rgb = self.theme["text_color"]  # Ocean Blue white text
                 p.alignment = PP_ALIGN.LEFT
                 y_pos += 1.1
 
         else:  # right
-            # Bullets on left - shiny gray with 3D shadow effect
+            # Bullets on left - Ocean Blue white text with shadow effect
             y_pos = 2
             for i, bullet in enumerate(bullets[:4]):
                 bullet_box = slide.shapes.add_textbox(
@@ -1789,7 +1789,7 @@ class ThemeGenerator:
                 p.font.name = self.theme["font"]
                 p.font.size = Pt(24)
                 p.font.bold = True
-                p.font.color.rgb = RGBColor(169, 169, 169)  # Shiny gray
+                p.font.color.rgb = self.theme["text_color"]  # Ocean Blue white text
                 p.alignment = PP_ALIGN.LEFT
                 y_pos += 1.1
 
@@ -1799,8 +1799,8 @@ class ThemeGenerator:
                 Inches(6.5), Inches(1.8), Inches(3), Inches(4.5)
             )
             img_box.fill.solid()
-            img_box.fill.fore_color.rgb = RGBColor(200, 200, 200)  # Light gray
-            img_box.line.color.rgb = RGBColor(50, 50, 50)  # Dark grey border
+            img_box.fill.fore_color.rgb = self.theme["secondary_color"]  # Light blue
+            img_box.line.color.rgb = self.theme["primary_color"]  # Ocean blue border
             img_box.line.width = Pt(3)
 
         # Increment layout index for next slide
@@ -2058,7 +2058,7 @@ class ThemeGenerator:
         elif self.theme_name == "Film Flare":
             p.font.color.rgb = RGBColor(255, 215, 0)  # Yellow
         elif self.theme_name == "Iridiscent Glow":
-            p.font.color.rgb = RGBColor(50, 50, 50)  # Dark grey
+            p.font.color.rgb = self.theme["text_color"]  # Ocean Blue white text
         elif self.theme_name == "Notepad and Folder":
             p.font.color.rgb = self.theme["text_color"]  # Dark brown
         elif self.theme_name == "Paperback Green":
