@@ -692,7 +692,7 @@ class ThemeGenerator:
 
         elif self.theme_name == "Iridiscent Glow":
             # Load title background image
-            self._add_background_image(slide, "Iridiscent Glow Title.jpg")
+            self._add_background_image(slide, "Iridiscent Glow Title and Thank You.PNG")
 
             # Title - Ocean Blue white text with 3D shadow effect, centered
             title_box = slide.shapes.add_textbox(
@@ -1701,9 +1701,9 @@ class ThemeGenerator:
 
         # Load background image based on layout type
         if layout_type == "left":
-            self._add_background_image(slide, "Iridiscent Glow Body 1.jpg")
+            self._add_background_image(slide, "Iridiscent Glow Body 1.PNG")
         else:  # right
-            self._add_background_image(slide, "Iridiscent Glow Body 2.jpg")
+            self._add_background_image(slide, "Iridiscent Glow Body 2.PNG")
 
         # Title - shiny gray with 3D shadow effect
         title_box = slide.shapes.add_textbox(
@@ -2018,8 +2018,8 @@ class ThemeGenerator:
             # Load title background image (same as title slide)
             self._add_background_image(slide, "Film Flare Title Background.jpg")
         elif self.theme_name == "Iridiscent Glow":
-            # Load thank you background image
-            self._add_background_image(slide, "Iridiscent Glow Thank You.jpg")
+            # Load thank you background image (same as title)
+            self._add_background_image(slide, "Iridiscent Glow Title and Thank You.PNG")
         elif self.theme_name == "Notepad and Folder":
             # Load thank you background image
             self._add_background_image(slide, "Notepad and Folder Thank You.jpg")
