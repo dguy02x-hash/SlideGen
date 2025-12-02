@@ -1297,21 +1297,25 @@ def list_themes():
         for theme_name in os.listdir(theme_dir):
             theme_path = os.path.join(theme_dir, theme_name)
             if os.path.isdir(theme_path):
-                # Get preview images, prioritizing title.png first
+                # Get preview images, prioritizing Preview.png or title.png first
                 previews = []
-                title_preview = None
+                main_preview = None
 
                 for file in sorted(os.listdir(theme_path)):
                     if file.lower().endswith(('.png', '.jpg', '.jpeg')):
                         file_path = f'/{theme_dir}/{theme_name}/{file}'
-                        if file.lower() in ['title.png', 'title.jpg', 'title.jpeg']:
-                            title_preview = file_path
+                        # Prioritize files with "Preview" in the name (e.g., "Iridiscent Glow Preview.png")
+                        if 'preview' in file.lower():
+                            main_preview = file_path
+                        # Fallback to title.png if no Preview file exists
+                        elif file.lower() in ['title.png', 'title.jpg', 'title.jpeg'] and not main_preview:
+                            main_preview = file_path
                         else:
                             previews.append(file_path)
 
-                # Put title.png first if it exists
-                if title_preview:
-                    previews.insert(0, title_preview)
+                # Put main preview first if it exists
+                if main_preview:
+                    previews.insert(0, main_preview)
 
                 if previews:  # Only include themes with preview images
                     themes.append({
