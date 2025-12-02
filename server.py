@@ -2313,6 +2313,14 @@ def health_check():
         'stripe_configured': bool(stripe.api_key)
     })
 
+# Force HTTPS redirect
+@app.before_request
+def redirect_to_https():
+    """Redirect HTTP to HTTPS in production"""
+    if not request.is_secure and request.headers.get('X-Forwarded-Proto') == 'http':
+        url = request.url.replace('http://', 'https://', 1)
+        return redirect(url, code=301)
+
 @app.route('/api/test', methods=['POST'])
 def test_api():
     """Test endpoint to verify API key works"""
