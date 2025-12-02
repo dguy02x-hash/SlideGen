@@ -2313,43 +2313,6 @@ def health_check():
         'stripe_configured': bool(stripe.api_key)
     })
 
-# Security headers for all responses
-@app.after_request
-def add_security_headers(response):
-    """Add comprehensive security headers to all responses"""
-    # Prevent clickjacking
-    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
-
-    # Prevent MIME type sniffing
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-
-    # Enable XSS protection
-    response.headers['X-XSS-Protection'] = '1; mode=block'
-
-    # Referrer policy
-    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-
-    # Permissions policy
-    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
-
-    # Content Security Policy (allows YouTube embeds and Stripe)
-    response.headers['Content-Security-Policy'] = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.youtube.com; "
-        "style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data: https:; "
-        "font-src 'self' data:; "
-        "connect-src 'self' https://api.stripe.com https://api.anthropic.com https://api.tavily.com; "
-        "frame-src 'self' https://js.stripe.com https://www.youtube.com; "
-        "media-src 'self' https:;"
-    )
-
-    # HSTS (HTTP Strict Transport Security) - only if using HTTPS
-    if request.is_secure or request.headers.get('X-Forwarded-Proto') == 'https':
-        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-
-    return response
-
 @app.route('/api/test', methods=['POST'])
 def test_api():
     """Test endpoint to verify API key works"""
