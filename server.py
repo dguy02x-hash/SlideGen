@@ -1594,14 +1594,22 @@ def research_topic():
 """
             logger.info(f"✅ Using uploaded document ({len(source_document)} chars) as primary source for presentation outline")
 
-        # Search web for up-to-date information (especially important for current events)
-        # Skip web search if document uploaded - use document as primary source
+        # Search web for up-to-date information (especially important for current events and sports)
+        # Check if topic requires current information (sports, current events, etc.)
+        sports_keywords = ['sport', 'game', 'team', 'player', 'season', 'championship', 'tournament', 'league', 'nfl', 'nba', 'mlb', 'nhl', 'soccer', 'football', 'basketball', 'baseball', 'hockey']
+        current_events_keywords = ['current', 'event', 'news', 'recent', 'today', '2025', '2024', 'latest', 'breaking', 'update']
+
+        topic_lower = topic.lower()
+        requires_current_info = any(keyword in topic_lower for keyword in sports_keywords + current_events_keywords)
+
         web_context = ""
         search_results = []
 
-        if not source_document:
-            # Only search web if no document uploaded
+        if not source_document or requires_current_info:
+            # Always search web if no document OR if topic is sports/current events (requires up-to-date info)
             search_results = search_tavily(topic, max_results=3)
+            if requires_current_info:
+                logger.info(f"🔍 Sports/current events topic detected - forcing web search for up-to-date information")
         else:
             logger.info("⚠️  Skipping web search - using uploaded document as primary source")
 
