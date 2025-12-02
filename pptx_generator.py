@@ -139,7 +139,7 @@ class ThemeGenerator:
         "Iridiscent Glow": {
             "primary_color": RGBColor(147, 112, 219),  # Medium purple
             "secondary_color": RGBColor(216, 191, 216),  # Light purple
-            "text_color": RGBColor(216, 191, 216),  # Light purple text
+            "text_color": RGBColor(0, 0, 0),  # Black text
             "accent_color": RGBColor(186, 85, 211),  # Medium orchid
             "background": RGBColor(75, 0, 130),  # Indigo (for fallback)
             "font": "Impact",  # Impact font
