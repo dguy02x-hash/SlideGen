@@ -21,6 +21,7 @@ import time
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Email, To, Content
 from werkzeug.security import generate_password_hash, check_password_hash
+from email_validator import validate_email, EmailNotValidError
 
 # Load environment variables from .env file (override=True to ensure .env takes precedence)
 load_dotenv(override=True)
@@ -256,6 +257,29 @@ def send_email(to_email, subject, html_content):
     except Exception as e:
         logger.error(f"Failed to send email to {to_email}: {str(e)}")
         return False
+
+def validate_email_address(email):
+    """
+    Validate email address format and domain.
+    Returns (is_valid, normalized_email, error_message)
+    """
+    try:
+        # Validate and normalize email
+        validated = validate_email(email, check_deliverability=True)
+        normalized_email = validated.normalized
+        logger.info(f"✅ Email validation passed: {email} → {normalized_email}")
+        return True, normalized_email, None
+    except EmailNotValidError as e:
+        error_msg = str(e)
+        logger.warning(f"❌ Email validation failed for {email}: {error_msg}")
+
+        # Provide user-friendly error messages
+        if "domain" in error_msg.lower():
+            return False, None, "The email domain doesn't exist. Please check for typos."
+        elif "syntax" in error_msg.lower() or "@" not in email:
+            return False, None, "Invalid email format. Please enter a valid email address."
+        else:
+            return False, None, "Invalid email address. Please check and try again."
 
 def send_confirmation_email(to_email, confirmation_token, verification_code):
     """Send email confirmation with verification code"""
@@ -599,10 +623,18 @@ def signup():
         data = request.json
         email = data.get('email', '').strip().lower()
         password = data.get('password', '')
-        
+
         if not email or not password:
             return jsonify({'error': 'Email and password required'}), 400
-        
+
+        # Validate email format and domain
+        is_valid, normalized_email, error_msg = validate_email_address(email)
+        if not is_valid:
+            return jsonify({'error': error_msg}), 400
+
+        # Use normalized email
+        email = normalized_email
+
         if len(password) < 6:
             return jsonify({'error': 'Password must be at least 6 characters'}), 400
         
@@ -731,6 +763,14 @@ def forgot_password():
 
         if not email:
             return jsonify({'error': 'Email is required'}), 400
+
+        # Validate email format and domain
+        is_valid, normalized_email, error_msg = validate_email_address(email)
+        if not is_valid:
+            return jsonify({'error': error_msg}), 400
+
+        # Use normalized email
+        email = normalized_email
 
         conn = get_db()
         cursor = conn.cursor()
@@ -1067,6 +1107,14 @@ def check_verification_code():
 
         if not all([email, code]):
             return jsonify({'error': 'Email and verification code are required'}), 400
+
+        # Validate email format and domain
+        is_valid, normalized_email, error_msg = validate_email_address(email)
+        if not is_valid:
+            return jsonify({'error': error_msg, 'valid': False}), 400
+
+        # Use normalized email for database lookup
+        email = normalized_email
 
         conn = get_db()
         cursor = conn.cursor()
