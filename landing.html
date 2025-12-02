@@ -516,6 +516,25 @@
             color: white;
         }
 
+        .support-button {
+            display: inline-block;
+            margin: 1.5rem 0;
+            padding: 0.875rem 2rem;
+            background: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .support-button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
+        }
+
         .copyright {
             color: rgba(255, 255, 255, 0.6);
             padding-top: 2rem;
@@ -691,8 +710,8 @@
                 <a href="/subscribe.html">Get Started</a>
                 <a href="#features">Features</a>
                 <a href="#pricing">Pricing</a>
-                <a href="mailto:support@prespilot.com">Support</a>
             </div>
+            <a href="mailto:support@prespilot.com" class="support-button">📧 Email Support</a>
             <div class="copyright">
                 &copy; 2025 PresPilot. All rights reserved.
             </div>
