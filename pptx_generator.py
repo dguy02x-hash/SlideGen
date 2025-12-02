@@ -137,13 +137,13 @@ class ThemeGenerator:
             "layouts": ["right", "left", "top", "bottom"]
         },
         "Iridiscent Glow": {
-            "primary_color": RGBColor(0, 119, 182),  # Ocean Blue
-            "secondary_color": RGBColor(173, 216, 230),  # Light Blue
-            "text_color": RGBColor(255, 255, 255),  # White text
-            "accent_color": RGBColor(0, 191, 255),  # Bright Blue
-            "background": RGBColor(0, 91, 150),  # Ocean Blue (for fallback)
-            "font": "Calibri",  # Ocean Blue font
-            "title_font": "Calibri",  # Ocean Blue title font
+            "primary_color": RGBColor(147, 112, 219),  # Medium purple
+            "secondary_color": RGBColor(216, 191, 216),  # Light purple
+            "text_color": RGBColor(216, 191, 216),  # Light purple text
+            "accent_color": RGBColor(186, 85, 211),  # Medium orchid
+            "background": RGBColor(75, 0, 130),  # Indigo (for fallback)
+            "font": "Impact",  # Impact font
+            "title_font": "Impact",  # Impact title font
             "layouts": ["left", "right"]  # Only 2 body backgrounds
         },
         "Notepad and Folder": {
@@ -519,12 +519,15 @@ class ThemeGenerator:
 
         if os.path.exists(image_path):
             # Add image as background - fills entire slide
-            slide.shapes.add_picture(
+            pic = slide.shapes.add_picture(
                 image_path,
                 0, 0,
                 width=self.prs.slide_width,
                 height=self.prs.slide_height
             )
+            # Move to back so it doesn't cover other elements
+            slide.shapes._spTree.remove(pic._element)
+            slide.shapes._spTree.insert(2, pic._element)
         else:
             print(f"Warning: Background image not found: {image_path}")
 
