@@ -240,15 +240,18 @@ def send_email(to_email, subject, html_content):
 
     try:
         message = Mail(
-            from_email=Email(SENDGRID_FROM_EMAIL),
+            from_email=Email(SENDGRID_FROM_EMAIL, "PresPilot"),
             to_emails=To(to_email),
             subject=subject,
             html_content=html_content
         )
 
+        # Add reply-to for better deliverability
+        message.reply_to = Email(SENDGRID_FROM_EMAIL, "PresPilot Support")
+
         sg = SendGridAPIClient(SENDGRID_API_KEY)
         response = sg.send(message)
-        logger.info(f"Email sent to {to_email}: {subject}")
+        logger.info(f"Email sent to {to_email}: {subject} (Status: {response.status_code})")
         return True
     except Exception as e:
         logger.error(f"Failed to send email to {to_email}: {str(e)}")
