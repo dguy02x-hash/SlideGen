@@ -1662,11 +1662,14 @@ def research_topic():
 
         # Generate outline with document context (if available) and web context (if available)
         web_instruction = ""
-        if search_results and not source_document:
-            # Only use web search if no document uploaded
+        if search_results and requires_current_info:
+            # For sports/current events, ALWAYS prioritize web search (even if document uploaded)
+            web_instruction = "\n⚠️ CRITICAL: This is a sports/current events topic. You MUST base your presentation on the CURRENT web information provided above, NOT on your training data or the document. Use specific facts, dates, scores, standings, and details from the web sources.\n"
+        elif search_results and not source_document:
+            # Only web search available, no document uploaded
             web_instruction = "\n⚠️ CRITICAL: Current web information is provided above. You MUST base your presentation on this current information, NOT on your training data. Use specific facts, dates, and details from the web sources.\n"
         elif source_document and search_results:
-            # If both document and web search available, prioritize document
+            # If both document and web search available (but not sports/current events), prioritize document
             web_instruction = "\n⚠️ NOTE: Web information is provided for additional context, but prioritize the source document content above.\n"
 
         prompt = f"""Create a detailed outline for a {num_slides}-slide presentation on: {topic}
