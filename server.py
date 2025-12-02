@@ -1596,8 +1596,29 @@ def research_topic():
 
         # Search web for up-to-date information (especially important for current events and sports)
         # Check if topic requires current information (sports, current events, etc.)
-        sports_keywords = ['sport', 'game', 'team', 'player', 'season', 'championship', 'tournament', 'league', 'nfl', 'nba', 'mlb', 'nhl', 'soccer', 'football', 'basketball', 'baseball', 'hockey']
-        current_events_keywords = ['current', 'event', 'news', 'recent', 'today', '2025', '2024', 'latest', 'breaking', 'update']
+        sports_keywords = [
+            'sport', 'game', 'team', 'player', 'season', 'championship', 'tournament', 'league',
+            'nfl', 'nba', 'mlb', 'nhl', 'mls', 'fifa', 'uefa', 'premier league', 'la liga', 'serie a',
+            'soccer', 'football', 'basketball', 'baseball', 'hockey', 'tennis', 'golf', 'racing',
+            'nascar', 'formula 1', 'f1', 'boxing', 'mma', 'ufc', 'wrestling', 'volleyball', 'cricket', 'rugby',
+            'playoff', 'playoffs', 'super bowl', 'superbowl', 'world series', 'world cup', 'olympics', 'olympic',
+            'finals', 'semifinal', 'quarterfinal', 'match', 'score', 'win', 'loss', 'victory', 'defeat',
+            'draft', 'trade', 'injury', 'injured', 'roster', 'conference', 'division', 'standings', 'ranking',
+            'athlete', 'athletes', 'coach', 'coaching', 'trainer', 'stadium', 'arena', 'cup', 'trophy',
+            'medal', 'gold medal', 'silver medal', 'bronze medal', 'champion', 'champions', 'mvp',
+            'all-star', 'hall of fame', 'record-breaking', 'franchise', 'contract', 'signing'
+        ]
+        current_events_keywords = [
+            'current', 'event', 'news', 'recent', 'today', 'yesterday', 'this week', 'this month',
+            'latest', 'breaking', 'update', 'developing', 'announcement', 'announced',
+            '2025', '2024', '2026', 'january 2025', 'february 2025', 'march 2025', 'april 2025',
+            'may 2025', 'june 2025', 'july 2025', 'august 2025', 'september 2025', 'october 2025',
+            'november 2025', 'december 2025',
+            'situation', 'crisis', 'emergency', 'election', 'political', 'policy', 'pandemic',
+            'outbreak', 'conflict', 'war', 'protest', 'strike', 'legislation', 'regulation',
+            'reform', 'investigation', 'scandal', 'controversy', 'milestone', 'achievement',
+            'historic', 'unprecedented', 'trend', 'trending', 'viral', 'breaking news'
+        ]
 
         topic_lower = topic.lower()
         requires_current_info = any(keyword in topic_lower for keyword in sports_keywords + current_events_keywords)
