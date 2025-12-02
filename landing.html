@@ -451,6 +451,26 @@
             color: var(--text-light);
         }
 
+        .video-container {
+            max-width: 800px;
+            margin: 3rem auto;
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            border-radius: 1rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
         /* CTA Section */
         .cta {
             padding: 6rem 2rem;
@@ -601,6 +621,45 @@
         </div>
     </section>
 
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="how-it-works">
+        <div class="how-it-works-content">
+            <h2 class="section-title">How It Works</h2>
+            <p class="section-subtitle">Four simple steps to amazing presentations</p>
+
+            <!-- YouTube Video Embed -->
+            <div class="video-container">
+                <iframe src="https://www.youtube.com/embed/FBpxc7btiWk"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen>
+                </iframe>
+            </div>
+
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Sign Up</h3>
+                    <p>Create your account and subscribe to start generating presentations instantly.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Enter Your Topic</h3>
+                    <p>Describe your presentation topic or upload a document for AI analysis.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Customize</h3>
+                    <p>Choose your preferred theme, layout, and number of slides.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <h3>Download</h3>
+                    <p>Get your complete presentation with speaker notes ready to present!</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Features Section -->
     <section id="features" class="features">
         <div class="features-content">
@@ -660,36 +719,6 @@
                     <li>Priority support</li>
                 </ul>
                 <a href="/subscribe.html" class="btn btn-primary btn-large" onclick="handleCTAClick(event)">Subscribe Now</a>
-            </div>
-        </div>
-    </section>
-
-    <!-- How It Works Section -->
-    <section id="how-it-works" class="how-it-works">
-        <div class="how-it-works-content">
-            <h2 class="section-title">How It Works</h2>
-            <p class="section-subtitle">Four simple steps to amazing presentations</p>
-            <div class="steps">
-                <div class="step">
-                    <div class="step-number">1</div>
-                    <h3>Sign Up</h3>
-                    <p>Create your account and subscribe to start generating presentations instantly.</p>
-                </div>
-                <div class="step">
-                    <div class="step-number">2</div>
-                    <h3>Enter Your Topic</h3>
-                    <p>Describe your presentation topic or upload a document for AI analysis.</p>
-                </div>
-                <div class="step">
-                    <div class="step-number">3</div>
-                    <h3>Customize</h3>
-                    <p>Choose your preferred theme, layout, and number of slides.</p>
-                </div>
-                <div class="step">
-                    <div class="step-number">4</div>
-                    <h3>Download</h3>
-                    <p>Get your complete presentation with speaker notes ready to present!</p>
-                </div>
             </div>
         </div>
     </section>
