@@ -276,16 +276,6 @@ def send_email(to_email, subject, html_content, plain_text_content=None):
         # Add reply-to for better deliverability
         message.reply_to = Email(SENDGRID_FROM_EMAIL, "PresPilot Support")
 
-        # Set email category for tracking (helps SendGrid reputation)
-        message.category = "account_verification"
-
-        # Enable tracking for deliverability insights
-        message.tracking_settings = {
-            "click_tracking": {"enable": False},  # Disable for transactional emails
-            "open_tracking": {"enable": True},   # Keep open tracking
-            "subscription_tracking": {"enable": False}
-        }
-
         sg = SendGridAPIClient(SENDGRID_API_KEY)
         response = sg.send(message)
         logger.info(f"✅ Email sent to {to_email}: {subject} (Status: {response.status_code})")
