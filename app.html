@@ -854,9 +854,14 @@
     <script>
         // Configuration
         // Use window.location.origin for production, fallback to localhost for development
-        const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? 'http://localhost:5001'
-            : window.location.origin;
+        // Force HTTPS in production to prevent security warnings
+        let API_URL;
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            API_URL = 'http://localhost:5001';
+        } else {
+            // Force HTTPS in production
+            API_URL = window.location.origin.replace('http://', 'https://');
+        }
         let currentUser = null;
         let presentationData = {
             topic: '',
