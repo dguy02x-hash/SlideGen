@@ -2040,6 +2040,86 @@ def cancel_subscription():
         logger.error(f"Cancel subscription error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/payment/fix-stripe-link', methods=['POST'])
+@login_required
+def fix_stripe_link():
+    """Fix missing Stripe subscription link for logged-in user"""
+    try:
+        user_id = session['user_id']
+
+        conn = get_db()
+        cursor = conn.cursor()
+        user = cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+
+        if not user:
+            conn.close()
+            return jsonify({'error': 'User not found'}), 404
+
+        email = user['email']
+        logger.info(f"Attempting to fix Stripe link for user: {email}")
+
+        # Check if already linked
+        if user['stripe_subscription_id']:
+            conn.close()
+            return jsonify({
+                'success': True,
+                'message': 'Your account is already linked to a Stripe subscription',
+                'subscription_id': user['stripe_subscription_id']
+            })
+
+        # Search for active subscriptions in Stripe for this email
+        customers = stripe.Customer.list(email=email, limit=10)
+
+        if not customers.data:
+            conn.close()
+            return jsonify({'error': 'No Stripe subscription found for your email'}), 404
+
+        # Find active subscription
+        active_subscription = None
+        customer_id = None
+
+        for customer in customers.data:
+            subscriptions = stripe.Subscription.list(customer=customer.id, limit=10)
+
+            for sub in subscriptions.data:
+                if sub.status == 'active':
+                    active_subscription = sub
+                    customer_id = customer.id
+                    break
+
+            if active_subscription:
+                break
+
+        if not active_subscription:
+            conn.close()
+            return jsonify({'error': 'No active subscription found for your email'}), 404
+
+        # Update user record with Stripe IDs
+        cursor.execute('''
+            UPDATE users
+            SET stripe_customer_id = ?,
+                stripe_subscription_id = ?,
+                subscription_status = 'premium',
+                generations_limit = 10
+            WHERE id = ?
+        ''', (customer_id, active_subscription.id, user_id))
+
+        conn.commit()
+        conn.close()
+
+        logger.info(f"✅ Fixed Stripe link for {email}: {active_subscription.id}")
+
+        return jsonify({
+            'success': True,
+            'message': 'Your Stripe subscription has been linked successfully!',
+            'subscription_id': active_subscription.id,
+            'customer_id': customer_id
+        })
+
+    except Exception as e:
+        logger.error(f"Fix Stripe link error: {str(e)}")
+        return jsonify({'error': f'Failed to fix Stripe link: {str(e)}'}), 500
+
 # ============= Presentation Generation Endpoints =============
 
 @app.route('/api/research', methods=['POST'])
