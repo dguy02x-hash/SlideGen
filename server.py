@@ -22,6 +22,7 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Email, To, Content
 from werkzeug.security import generate_password_hash, check_password_hash
 from email_validator import validate_email, EmailNotValidError
+from twilio.rest import Client as TwilioClient
 
 # Load environment variables from .env file (override=True to ensure .env takes precedence)
 load_dotenv(override=True)
@@ -78,6 +79,19 @@ if not SENDGRID_API_KEY:
     logger.warning("⚠️  SENDGRID_API_KEY not configured - email features disabled")
 else:
     logger.info("✅ SendGrid configured")
+
+# Twilio configuration for SMS
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
+TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER')
+
+if not all([TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER]):
+    logger.warning("⚠️  Twilio not configured - SMS verification disabled")
+    TWILIO_ENABLED = False
+else:
+    logger.info("✅ Twilio SMS configured")
+    TWILIO_ENABLED = True
+    twilio_client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
 # Tavily Search API configuration (optional - for up-to-date research)
 TAVILY_API_KEY = os.environ.get('TAVILY_API_KEY')
@@ -334,6 +348,30 @@ def send_confirmation_email(to_email, confirmation_token, verification_code):
     '''
 
     return send_email(to_email, 'Your PresPilot Verification Code', html_content)
+
+def send_sms_verification(phone_number, verification_code):
+    """Send SMS verification code via Twilio"""
+    if not TWILIO_ENABLED:
+        logger.error("Twilio not configured - cannot send SMS")
+        return False
+
+    try:
+        # Format phone number (ensure it has +1 for US)
+        if not phone_number.startswith('+'):
+            phone_number = f'+1{phone_number.replace("-", "").replace("(", "").replace(")", "").replace(" ", "")}'
+
+        message = twilio_client.messages.create(
+            body=f'Your PresPilot verification code is: {verification_code}\n\nThis code will expire in 24 hours.\n\n- PresPilot',
+            from_=TWILIO_PHONE_NUMBER,
+            to=phone_number
+        )
+
+        logger.info(f"SMS sent to {phone_number}: SID {message.sid}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to send SMS to {phone_number}: {str(e)}")
+        return False
 
 def login_required(f):
     """Decorator to require login for endpoints"""
@@ -1160,6 +1198,54 @@ def check_verification_code():
     except Exception as e:
         logger.error(f"Error checking verification code: {str(e)}")
         return jsonify({'error': str(e), 'valid': False}), 500
+
+@app.route('/api/auth/resend-code-sms', methods=['POST'])
+def resend_code_sms():
+    """Resend verification code via SMS"""
+    try:
+        if not TWILIO_ENABLED:
+            return jsonify({'error': 'SMS verification is not available'}), 503
+
+        data = request.json
+        email = data.get('email', '').strip().lower()
+        phone_number = data.get('phone_number', '').strip()
+
+        if not all([email, phone_number]):
+            return jsonify({'error': 'Email and phone number are required'}), 400
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Get pending subscription by email
+        pending = cursor.execute(
+            'SELECT * FROM pending_subscriptions WHERE customer_email = ? AND account_created = 0',
+            (email,)
+        ).fetchone()
+        conn.close()
+
+        if not pending:
+            return jsonify({'error': 'No pending subscription found for this email'}), 404
+
+        # Check if code is expired
+        token_expires_at = datetime.fromisoformat(pending['token_expires_at'])
+        if datetime.utcnow() > token_expires_at:
+            return jsonify({'error': 'Verification code has expired. Please subscribe again.'}), 400
+
+        # Send SMS with existing verification code
+        sms_sent = send_sms_verification(phone_number, pending['verification_code'])
+
+        if sms_sent:
+            logger.info(f"Verification code resent via SMS to {phone_number} for {email}")
+            return jsonify({
+                'success': True,
+                'message': 'Verification code sent via SMS'
+            }), 200
+        else:
+            return jsonify({'error': 'Failed to send SMS. Please try again.'}), 500
+
+    except Exception as e:
+        logger.error(f"Error resending code via SMS: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/auth/create-account-with-session', methods=['POST'])
 def create_account_with_session():
