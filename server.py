@@ -1918,7 +1918,7 @@ def stripe_webhook():
             ).fetchone()
 
             if existing_user:
-                # User exists - update their subscription status directly
+                # User exists - update their subscription status directly (re-subscribing)
                 cursor.execute('''
                     UPDATE users
                     SET subscription_status = 'premium',
@@ -1932,27 +1932,9 @@ def stripe_webhook():
                 conn.commit()
                 logger.info(f"✅ Upgraded existing user {customer_email} to premium")
             else:
-                # New user - create pending subscription for email confirmation flow
-                confirmation_token = secrets.token_urlsafe(32)
-                verification_code = ''.join([str(secrets.randbelow(10)) for _ in range(6)])  # 6-digit code
-                token_expires_at = datetime.utcnow() + timedelta(hours=24)
-
-                cursor.execute('''
-                    INSERT INTO pending_subscriptions
-                    (session_id, customer_email, stripe_customer_id, stripe_subscription_id,
-                     confirmation_token, verification_code, token_expires_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (session_id, customer_email, stripe_customer_id, stripe_subscription_id,
-                      confirmation_token, verification_code, token_expires_at))
-                conn.commit()
-                logger.info(f"Stored pending subscription for {customer_email} with verification code: {verification_code}")
-
-                # Send confirmation email with verification code
-                email_sent = send_confirmation_email(customer_email, confirmation_token, verification_code)
-                if email_sent:
-                    logger.info(f"✅ Confirmation email sent to {customer_email}")
-                else:
-                    logger.error(f"❌ Failed to send confirmation email to {customer_email}")
+                # New user - account will be created when they set password on payment-success page
+                # No confirmation email needed - they create account immediately after payment
+                logger.info(f"✅ New subscription for {customer_email} - account will be created on payment-success page")
         except Exception as e:
             logger.error(f"Error handling checkout session: {str(e)}")
         finally:
