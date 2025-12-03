@@ -2000,14 +2000,25 @@ def cancel_subscription():
     """Cancel user's subscription at the end of billing period"""
     try:
         user_id = session['user_id']
+        logger.info(f"Cancel subscription request from user_id: {user_id}")
 
         conn = get_db()
         cursor = conn.cursor()
         user = cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
         conn.close()
 
-        if not user or not user['stripe_subscription_id']:
-            return jsonify({'error': 'No active subscription'}), 400
+        logger.info(f"User found: {user is not None}, Stripe Sub ID: {user['stripe_subscription_id'] if user else 'N/A'}")
+
+        if not user:
+            logger.warning(f"Cancel subscription failed - user {user_id} not found in database")
+            return jsonify({'error': 'User not found. Please try logging out and back in.'}), 400
+
+        if not user['stripe_subscription_id']:
+            logger.warning(f"Cancel subscription failed - user {user['email']} has no stripe_subscription_id")
+            return jsonify({
+                'error': 'No active subscription found. If you just subscribed, please contact support.',
+                'debug_info': f'User: {user["email"]}, Status: {user["subscription_status"]}'
+            }), 400
 
         # Cancel subscription at period end (keeps access until end of paid month)
         subscription = stripe.Subscription.modify(
