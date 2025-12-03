@@ -139,14 +139,23 @@
         <h1>Payment Successful!</h1>
         <p class="subtitle">Thank you for subscribing to PresPilot</p>
 
-        <div class="email-icon">📧</div>
+        <!-- VERIFICATION CODE DISPLAY (No need to wait for email!) -->
+        <div id="code-display" style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); padding: 2rem; border-radius: 1rem; margin: 2rem 0; display: none;">
+            <h2 style="color: #1f2937; font-size: 1.5rem; margin: 0 0 1rem 0; text-align: center;">🎉 Your Verification Code</h2>
+            <div style="background: white; padding: 1.5rem; border-radius: 0.75rem; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                <p style="color: #6b7280; font-size: 0.875rem; margin: 0 0 0.5rem 0; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">No need to wait for email!</p>
+                <p id="verification-code" style="color: #1f2937; font-size: 3rem; font-weight: bold; margin: 0; letter-spacing: 8px; font-family: 'Courier New', monospace;">------</p>
+                <p style="color: #6b7280; font-size: 0.875rem; margin: 0.75rem 0 0 0;">Copy this code - you'll need it on the next page</p>
+            </div>
+        </div>
 
         <div class="instructions">
-            <h2>Check Your Email for Verification Code</h2>
-            <p style="margin-bottom: 1.5rem;">We've sent a verification code to complete your registration:</p>
+            <h2>Complete Your Registration</h2>
+            <p style="margin-bottom: 1.5rem;">Use the verification code above to create your account:</p>
             <ul>
-                <li>Check your email for a 6-digit verification code</li>
-                <li>Enter the verification code to confirm your subscription</li>
+                <li>You'll be redirected to the verification page automatically</li>
+                <li>Enter your email address</li>
+                <li>Paste the 6-digit code shown above</li>
                 <li>Create your password</li>
                 <li>Start creating presentations!</li>
             </ul>
@@ -156,10 +165,10 @@
         </div>
 
         <div class="instructions" style="background: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.3); margin-top: 1.5rem;">
-            <h2 style="color: #15803d;">✅ No Link Clicking Required!</h2>
-            <p style="margin-bottom: 1rem; font-weight: 600;">Simply copy the code from your email and paste it on the verification page.</p>
+            <h2 style="color: #15803d;">✅ Email Also Sent (Backup)</h2>
+            <p style="margin-bottom: 1rem; font-weight: 600;">We've also sent this code to your email - but you already have it above!</p>
             <p style="font-size: 0.95rem; opacity: 0.9;">
-                <strong>Can't find the email?</strong> Check your spam/junk folder. The verification code works even if the email is in spam - just copy and paste it!
+                <strong>Email not arriving?</strong> No problem! Just use the code shown above. The email can sometimes take a few minutes or land in your spam folder.
             </p>
         </div>
 
@@ -190,7 +199,7 @@
             API_URL = window.location.origin.replace('http://', 'https://');
         }
 
-        // Fetch the pending subscription to get the email
+        // Fetch the pending subscription to get the email and verification code
         if (sessionId) {
             fetch(`${API_URL}/api/auth/pending-subscription?session_id=${sessionId}`, {
                 credentials: 'include'
@@ -198,6 +207,14 @@
             .then(response => response.json())
             .then(data => {
                 if (data.email) {
+                    // Display verification code immediately (no need to wait for email!)
+                    if (data.verification_code) {
+                        const codeDisplay = document.getElementById('code-display');
+                        const verificationCode = document.getElementById('verification-code');
+                        verificationCode.textContent = data.verification_code;
+                        codeDisplay.style.display = 'block';
+                    }
+
                     // Show countdown message
                     const redirectMessage = document.getElementById('redirect-message');
                     const countdownSpan = document.getElementById('countdown');

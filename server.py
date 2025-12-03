@@ -1051,9 +1051,13 @@ def get_pending_subscription():
         if not pending:
             return jsonify({'error': 'No pending subscription found'}), 404
 
+        # Extract 6-digit verification code from token
+        verification_code = pending['confirmation_token'][:6] if len(pending['confirmation_token']) > 10 else pending['confirmation_token']
+
         return jsonify({
             'email': pending['customer_email'],
-            'session_id': pending['session_id']
+            'session_id': pending['session_id'],
+            'verification_code': verification_code  # Include code for immediate display
         })
 
     except Exception as e:
