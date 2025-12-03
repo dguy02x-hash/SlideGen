@@ -1316,6 +1316,54 @@ def resend_code_sms():
         logger.error(f"Error resending code via SMS: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/auth/resend-verification', methods=['POST'])
+def resend_verification_email():
+    """Resend verification email for pending subscription"""
+    try:
+        data = request.json
+        email = data.get('email', '').strip().lower()
+
+        if not email:
+            return jsonify({'error': 'Email is required'}), 400
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Get most recent pending subscription by email
+        pending = cursor.execute(
+            'SELECT * FROM pending_subscriptions WHERE customer_email = ? AND account_created = 0 ORDER BY created_at DESC LIMIT 1',
+            (email,)
+        ).fetchone()
+        conn.close()
+
+        if not pending:
+            return jsonify({'error': 'No pending subscription found for this email. Please try subscribing again.'}), 404
+
+        # Check if code is expired
+        token_expires_at = datetime.fromisoformat(pending['token_expires_at'])
+        if datetime.utcnow() > token_expires_at:
+            return jsonify({'error': 'Verification code has expired (24 hours). Please contact support or subscribe again.'}), 400
+
+        # Extract 6-digit code from token (or use full token if it's already 6 digits)
+        verification_code = pending['confirmation_token'][:6] if len(pending['confirmation_token']) > 10 else pending['confirmation_token']
+
+        # Resend confirmation email
+        email_sent = send_confirmation_email(email, pending['confirmation_token'], verification_code)
+
+        if email_sent:
+            logger.info(f"✅ Verification email resent to {email}")
+            return jsonify({
+                'success': True,
+                'message': 'Verification email sent! Check your inbox and spam folder.'
+            }), 200
+        else:
+            logger.error(f"❌ Failed to resend verification email to {email}")
+            return jsonify({'error': 'Failed to send email. Please try again or contact support.'}), 500
+
+    except Exception as e:
+        logger.error(f"Error resending verification email: {str(e)}")
+        return jsonify({'error': 'An error occurred. Please try again.'}), 500
+
 @app.route('/api/auth/create-account-with-session', methods=['POST'])
 def create_account_with_session():
     """Create account using verified email and code from session"""

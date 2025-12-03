@@ -222,6 +222,19 @@
                 <button type="submit" id="submit-btn" class="btn">Verify Code & Continue</button>
             </form>
 
+            <div style="text-align: center; margin-top: 1.5rem; padding: 1rem; background: #fef3c7; border-radius: 0.5rem; border: 1px solid #fbbf24;">
+                <p style="margin: 0 0 0.75rem 0; font-size: 0.95rem; color: #78350f; font-weight: 600;">
+                    📧 Didn't receive the email?
+                </p>
+                <p style="margin: 0 0 1rem 0; font-size: 0.875rem; color: #92400e;">
+                    Check your spam/junk folder. Emails sometimes take a few minutes to arrive.
+                </p>
+                <button type="button" id="resend-btn" onclick="resendEmail()" style="padding: 0.625rem 1.25rem; background: #1f2937; color: #fbbf24; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer; font-size: 0.875rem;">
+                    Resend Verification Email
+                </button>
+                <div id="resend-message" style="margin-top: 0.75rem; font-size: 0.875rem; display: none;"></div>
+            </div>
+
             <div class="back-link">
                 <a href="/landing.html">← Back to Home</a>
             </div>
@@ -331,6 +344,62 @@
                 submitBtn.textContent = 'Verify Code & Continue';
             }
         });
+
+        // Resend email function with rate limiting
+        let lastResendTime = 0;
+        const RESEND_COOLDOWN = 60000; // 60 seconds
+
+        async function resendEmail() {
+            const now = Date.now();
+            const timeSinceLastResend = now - lastResendTime;
+
+            if (timeSinceLastResend < RESEND_COOLDOWN) {
+                const secondsRemaining = Math.ceil((RESEND_COOLDOWN - timeSinceLastResend) / 1000);
+                showResendMessage(`Please wait ${secondsRemaining} seconds before resending.`, 'error');
+                return;
+            }
+
+            const email = emailInput.value.trim().toLowerCase();
+            if (!email) {
+                showResendMessage('Please enter your email address first.', 'error');
+                return;
+            }
+
+            const resendBtn = document.getElementById('resend-btn');
+            resendBtn.disabled = true;
+            resendBtn.textContent = 'Sending...';
+
+            try {
+                const response = await fetch(`${API_URL}/api/auth/resend-verification`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    lastResendTime = now;
+                    showResendMessage('✅ Verification email sent! Check your inbox and spam folder.', 'success');
+                } else {
+                    showResendMessage(data.error || '❌ Failed to resend email. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Error resending email:', error);
+                showResendMessage('❌ Network error. Please try again.', 'error');
+            } finally {
+                resendBtn.disabled = false;
+                resendBtn.textContent = 'Resend Verification Email';
+            }
+        }
+
+        function showResendMessage(text, type) {
+            const messageDiv = document.getElementById('resend-message');
+            messageDiv.textContent = text;
+            messageDiv.style.display = 'block';
+            messageDiv.style.color = type === 'success' ? '#065f46' : '#991b1b';
+            messageDiv.style.fontWeight = '600';
+        }
     </script>
 </body>
 </html>
