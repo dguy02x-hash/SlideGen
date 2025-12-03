@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 import stripe
 import time
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Email, To, Content
+from sendgrid.helpers.mail import Mail, Email, To, Content, ClickTracking, TrackingSettings
 from werkzeug.security import generate_password_hash, check_password_hash
 from email_validator import validate_email, EmailNotValidError
 from twilio.rest import Client as TwilioClient
@@ -275,6 +275,12 @@ def send_email(to_email, subject, html_content, plain_text_content=None):
 
         # Add reply-to for better deliverability
         message.reply_to = Email(SENDGRID_FROM_EMAIL, "PresPilot Support")
+
+        # Disable click tracking to avoid SSL issues with tracking subdomains
+        # Transactional emails don't need click tracking
+        tracking_settings = TrackingSettings()
+        tracking_settings.click_tracking = ClickTracking(enable=False, enable_text=False)
+        message.tracking_settings = tracking_settings
 
         sg = SendGridAPIClient(SENDGRID_API_KEY)
         response = sg.send(message)
