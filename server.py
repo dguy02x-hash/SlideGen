@@ -247,29 +247,51 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-def send_email(to_email, subject, html_content):
-    """Generic helper function to send emails via SendGrid"""
+def send_email(to_email, subject, html_content, plain_text_content=None):
+    """
+    Generic helper function to send emails via SendGrid
+    Optimized for deliverability across all email providers (Gmail, AOL, Outlook, Yahoo, etc.)
+    """
     if not SENDGRID_API_KEY:
         logger.error("SendGrid not configured - cannot send email")
         return False
 
     try:
+        # Create plain text version if not provided (helps with spam filters)
+        if not plain_text_content:
+            # Strip HTML tags for basic plain text version
+            import re
+            plain_text_content = re.sub('<[^<]+?>', '', html_content)
+            plain_text_content = plain_text_content.replace('&nbsp;', ' ')
+            plain_text_content = '\n'.join(line.strip() for line in plain_text_content.split('\n') if line.strip())
+
         message = Mail(
             from_email=Email(SENDGRID_FROM_EMAIL, "PresPilot"),
             to_emails=To(to_email),
             subject=subject,
-            html_content=html_content
+            html_content=html_content,
+            plain_text_content=plain_text_content  # Add plain text version
         )
 
         # Add reply-to for better deliverability
         message.reply_to = Email(SENDGRID_FROM_EMAIL, "PresPilot Support")
 
+        # Set email category for tracking (helps SendGrid reputation)
+        message.category = "account_verification"
+
+        # Enable tracking for deliverability insights
+        message.tracking_settings = {
+            "click_tracking": {"enable": False},  # Disable for transactional emails
+            "open_tracking": {"enable": True},   # Keep open tracking
+            "subscription_tracking": {"enable": False}
+        }
+
         sg = SendGridAPIClient(SENDGRID_API_KEY)
         response = sg.send(message)
-        logger.info(f"Email sent to {to_email}: {subject} (Status: {response.status_code})")
+        logger.info(f"✅ Email sent to {to_email}: {subject} (Status: {response.status_code})")
         return True
     except Exception as e:
-        logger.error(f"Failed to send email to {to_email}: {str(e)}")
+        logger.error(f"❌ Failed to send email to {to_email}: {str(e)}")
         return False
 
 def validate_email_address(email):
@@ -296,10 +318,37 @@ def validate_email_address(email):
             return False, None, "Invalid email address. Please check and try again."
 
 def send_confirmation_email(to_email, confirmation_token, verification_code):
-    """Send email confirmation with verification code"""
+    """
+    Send email confirmation with verification code
+    Optimized for deliverability across all email providers
+    """
     # Use FRONTEND_URL if set, otherwise fall back to request.host_url for local dev
     base_url = os.environ.get('FRONTEND_URL', request.host_url.rstrip('/'))
     confirmation_url = f"{base_url}/confirm-email.html?email={to_email}"
+
+    # Create plain text version for better spam filter compatibility
+    plain_text = f'''
+Welcome to PresPilot!
+
+Thank you for subscribing. Use this verification code to create your account:
+
+YOUR VERIFICATION CODE: {verification_code}
+
+How to complete your registration:
+1. Go to {confirmation_url}
+2. Enter your email address: {to_email}
+3. Enter the 6-digit code above
+4. Create your password
+5. Start creating presentations!
+
+This code will expire in 24 hours.
+
+If you didn't request this, you can safely ignore this email.
+
+---
+PresPilot - AI-Powered Presentation Creator
+Support: support@prespilot.com
+    '''
 
     html_content = f'''
     <!DOCTYPE html>
@@ -337,6 +386,9 @@ def send_confirmation_email(to_email, confirmation_token, verification_code):
 
                                 <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0 0 10px 0;">This code will expire in 24 hours.</p>
                                 <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0;">If you didn't request this, you can safely ignore this email.</p>
+
+                                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+                                <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">PresPilot - AI-Powered Presentation Creator</p>
                             </td>
                         </tr>
                     </table>
@@ -347,7 +399,7 @@ def send_confirmation_email(to_email, confirmation_token, verification_code):
     </html>
     '''
 
-    return send_email(to_email, 'Your PresPilot Verification Code', html_content)
+    return send_email(to_email, 'Your PresPilot Verification Code', html_content, plain_text)
 
 def send_sms_verification(phone_number, verification_code):
     """Send SMS verification code via Twilio"""
@@ -846,6 +898,24 @@ def forgot_password():
         base_url = os.environ.get('FRONTEND_URL', request.host_url.rstrip('/'))
         reset_url = f"{base_url}/reset-password.html?token={reset_token}"
 
+        # Create plain text version for better deliverability
+        plain_text = f'''
+Password Reset Request
+
+We received a request to reset your password for your PresPilot account.
+
+Click this link to reset your password:
+{reset_url}
+
+This link will expire in 1 hour.
+
+If you didn't request this password reset, you can safely ignore this email. Your password will not be changed.
+
+---
+PresPilot - AI-Powered Presentation Creator
+Support: support@prespilot.com
+        '''
+
         html_content = f'''
         <!DOCTYPE html>
         <html>
@@ -875,6 +945,9 @@ def forgot_password():
                                         <a href="{reset_url}" style="color: #0066cc; font-size: 14px; text-decoration: underline;">{reset_url}</a>
                                     </p>
                                     <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0;">If you didn't request this password reset, you can safely ignore this email. Your password will not be changed.</p>
+
+                                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+                                    <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">PresPilot - AI-Powered Presentation Creator</p>
                                 </td>
                             </tr>
                         </table>
@@ -885,7 +958,7 @@ def forgot_password():
         </html>
         '''
 
-        email_sent = send_email(email, 'Reset Your PresPilot Password', html_content)
+        email_sent = send_email(email, 'Reset Your PresPilot Password', html_content, plain_text)
 
         if email_sent:
             logger.info(f"Password reset email sent to {email}")
