@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Successful - PresPilot</title>
+    <title>Create Your Account - PresPilot</title>
     <style>
         * {
             margin: 0;
@@ -18,24 +18,24 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #1f2937;
             padding: 2rem;
+            color: #1f2937;
         }
 
         .container {
-            max-width: 600px;
+            max-width: 500px;
             width: 100%;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             padding: 3rem;
             border-radius: 2rem;
             box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-            text-align: center;
         }
 
         .success-icon {
-            font-size: 5rem;
-            margin-bottom: 1.5rem;
+            font-size: 4rem;
+            text-align: center;
+            margin-bottom: 1rem;
             animation: bounce 1s ease-in-out;
         }
 
@@ -45,91 +45,113 @@
         }
 
         h1 {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
             color: #1f2937;
+            text-align: center;
         }
 
         .subtitle {
-            font-size: 1.25rem;
+            font-size: 1rem;
             margin-bottom: 2rem;
-            opacity: 0.9;
-            line-height: 1.6;
-        }
-
-        .email-icon {
-            font-size: 4rem;
-            margin: 2rem 0;
             opacity: 0.8;
+            text-align: center;
         }
 
-        .instructions {
-            background: rgba(251, 191, 36, 0.2);
-            padding: 2rem;
-            border-radius: 1rem;
-            margin: 2rem 0;
-            border: 2px solid rgba(251, 191, 36, 0.3);
+        .form-group {
+            margin-bottom: 1.5rem;
         }
 
-        .instructions h2 {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: #1f2937;
-        }
-
-        .instructions ul {
-            list-style: none;
-            text-align: left;
-            margin: 1rem 0;
-        }
-
-        .instructions li {
-            padding: 0.75rem 0;
-            border-bottom: 1px solid rgba(0,0,0,0.1);
-            display: flex;
-            align-items: flex-start;
-            gap: 0.75rem;
-            font-size: 1.05rem;
-        }
-
-        .instructions li:last-child {
-            border-bottom: none;
-        }
-
-        .instructions li::before {
-            content: "✓";
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #059669;
-            flex-shrink: 0;
-        }
-
-        .note {
-            font-size: 0.95rem;
-            color: #6b7280;
-            margin-top: 2rem;
-            padding-top: 2rem;
-            border-top: 2px solid rgba(251, 191, 36, 0.3);
-        }
-
-        .note strong {
-            color: #1f2937;
-        }
-
-        .back-link {
-            margin-top: 2rem;
-        }
-
-        .back-link a {
-            color: #1f2937;
-            text-decoration: none;
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
             font-weight: 600;
-            opacity: 0.8;
-            transition: opacity 0.3s;
+            color: #1f2937;
         }
 
-        .back-link a:hover {
-            opacity: 1;
+        .form-group input {
+            width: 100%;
+            padding: 0.875rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #f59e0b;
+        }
+
+        .form-group input[readonly] {
+            background-color: #f3f4f6;
+            cursor: not-allowed;
+        }
+
+        .password-requirements {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-top: 0.5rem;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            background: #1f2937;
+            color: #fbbf24;
+            border: none;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 1.125rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .message {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            display: none;
+        }
+
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid #fbbf24;
+            border-top: 3px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -137,52 +159,38 @@
     <div class="container">
         <div class="success-icon">✅</div>
         <h1>Payment Successful!</h1>
-        <p class="subtitle">Thank you for subscribing to PresPilot</p>
+        <p class="subtitle">Create your account to get started</p>
 
-        <div class="email-icon">📧</div>
+        <div id="message" class="message"></div>
 
-        <div class="instructions">
-            <h2>Check Your Email for Verification Code</h2>
-            <p style="margin-bottom: 1.5rem;">We've sent a verification code to complete your registration:</p>
-            <ul>
-                <li>Check your email for a 6-digit verification code</li>
-                <li>Enter the verification code to confirm your subscription</li>
-                <li>Create your password</li>
-                <li>Start creating presentations!</li>
-            </ul>
-            <p id="redirect-message" style="margin-top: 1.5rem; font-weight: 600; color: #1f2937; display: none;">
-                Redirecting to verification page in <span id="countdown">5</span> seconds...
-            </p>
-        </div>
+        <form id="account-form">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required readonly>
+                <div class="password-requirements">
+                    Your subscription email from Stripe
+                </div>
+            </div>
 
-        <div class="instructions" style="background: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.3); margin-top: 1.5rem;">
-            <h2 style="color: #15803d;">✅ No Link Clicking Required!</h2>
-            <p style="margin-bottom: 1rem; font-weight: 600;">Simply copy the code from your email and paste it on the verification page.</p>
-            <p style="font-size: 0.95rem; opacity: 0.9;">
-                <strong>Can't find the email?</strong> Check your spam/junk folder. The verification code works even if the email is in spam - just copy and paste it!
-            </p>
-        </div>
+            <div class="form-group">
+                <label for="password">Create Password</label>
+                <input type="password" id="password" name="password" required minlength="8" placeholder="At least 8 characters">
+                <div class="password-requirements">
+                    At least 8 characters required
+                </div>
+            </div>
 
-        <p class="note">
-            <strong>Note:</strong> The verification code will expire in 24 hours.
-            If you have any issues, please contact support.
-        </p>
+            <div class="form-group">
+                <label for="confirm-password">Confirm Password</label>
+                <input type="password" id="confirm-password" name="confirm-password" required minlength="8" placeholder="Re-enter password">
+            </div>
 
-        <div class="back-link">
-            <a href="/landing.html">← Back to Home</a>
-        </div>
-
-        <a href="mailto:support@prespilot.com" style="display: block; text-align: center; margin-top: 2rem; padding: 0.875rem 2rem; background: #f59e0b; color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600; transition: all 0.3s; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); max-width: 300px; margin-left: auto; margin-right: auto;">
-            📧 Email Support
-        </a>
+            <button type="submit" id="submit-btn" class="btn">Create Account & Start</button>
+        </form>
     </div>
 
     <script>
-        // Get session_id from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const sessionId = urlParams.get('session_id');
-
-        // Force HTTPS in production to prevent security warnings
+        // Force HTTPS in production
         let API_URL;
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
             API_URL = 'http://localhost:5001';
@@ -190,39 +198,104 @@
             API_URL = window.location.origin.replace('http://', 'https://');
         }
 
-        // Fetch the pending subscription to get the email
-        if (sessionId) {
-            fetch(`${API_URL}/api/auth/pending-subscription?session_id=${sessionId}`, {
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session_id');
+
+        const messageDiv = document.getElementById('message');
+        const accountForm = document.getElementById('account-form');
+        const emailInput = document.getElementById('email');
+        const submitBtn = document.getElementById('submit-btn');
+
+        // Check if session_id exists
+        if (!sessionId) {
+            showMessage('Invalid session. Please try subscribing again.', 'error');
+            submitBtn.disabled = true;
+        } else {
+            // Fetch email from Stripe session
+            fetch(`${API_URL}/api/payment/session-info?session_id=${sessionId}`, {
                 credentials: 'include'
             })
             .then(response => response.json())
             .then(data => {
                 if (data.email) {
-                    // Show countdown message
-                    const redirectMessage = document.getElementById('redirect-message');
-                    const countdownSpan = document.getElementById('countdown');
-                    redirectMessage.style.display = 'block';
-
-                    let countdown = 5;
-                    const countdownInterval = setInterval(() => {
-                        countdown--;
-                        countdownSpan.textContent = countdown;
-                        if (countdown <= 0) {
-                            clearInterval(countdownInterval);
-                        }
-                    }, 1000);
-
-                    // Auto-redirect to confirm-email page with email pre-filled after 5 seconds
-                    setTimeout(() => {
-                        window.location.href = `/confirm-email.html?email=${encodeURIComponent(data.email)}`;
-                    }, 5000);
+                    emailInput.value = data.email;
+                } else {
+                    showMessage('Could not retrieve email. Please contact support.', 'error');
+                    submitBtn.disabled = true;
                 }
             })
             .catch(error => {
-                console.error('Error fetching email:', error);
-                // If error, still allow manual navigation
+                console.error('Error fetching session info:', error);
+                showMessage('Error loading session. Please contact support.', 'error');
+                submitBtn.disabled = true;
             });
         }
+
+        function showMessage(text, type) {
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+        }
+
+        function hideMessage() {
+            messageDiv.style.display = 'none';
+        }
+
+        // Handle form submission
+        accountForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+
+            // Validate passwords match
+            if (password !== confirmPassword) {
+                showMessage('Passwords do not match. Please try again.', 'error');
+                return;
+            }
+
+            // Validate password length
+            if (password.length < 8) {
+                showMessage('Password must be at least 8 characters long.', 'error');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Creating Account<span class="loading"></span>';
+            hideMessage();
+
+            try {
+                const response = await fetch(`${API_URL}/api/auth/create-account-after-payment`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('✅ Account created! Redirecting to dashboard...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/app.html';
+                    }, 1500);
+                } else {
+                    showMessage(data.error || 'Failed to create account. Please try again.', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Create Account & Start';
+                }
+            } catch (error) {
+                console.error('Error creating account:', error);
+                showMessage('Network error. Please check your connection and try again.', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Account & Start';
+            }
+        });
     </script>
 </body>
 </html>

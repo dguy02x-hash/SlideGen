@@ -23,6 +23,8 @@ from sendgrid.helpers.mail import Mail, Email, To, Content, ClickTracking, Track
 from werkzeug.security import generate_password_hash, check_password_hash
 from email_validator import validate_email, EmailNotValidError
 from twilio.rest import Client as TwilioClient
+import boto3
+from botocore.exceptions import ClientError
 
 # Load environment variables from .env file (override=True to ensure .env takes precedence)
 load_dotenv(override=True)
@@ -71,14 +73,37 @@ if not stripe.api_key:
 else:
     logger.info("✅ Stripe configured")
 
-# SendGrid configuration
+# SendGrid configuration (DEPRECATED - use SES instead due to poor IP reputation)
 SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
 SENDGRID_FROM_EMAIL = os.environ.get('SENDGRID_FROM_EMAIL', 'support@prespilot.com')
 
 if not SENDGRID_API_KEY:
-    logger.warning("⚠️  SENDGRID_API_KEY not configured - email features disabled")
+    logger.warning("⚠️  SENDGRID_API_KEY not configured")
 else:
-    logger.info("✅ SendGrid configured")
+    logger.info("⚠️  SendGrid configured (but has poor IP reputation - use SES)")
+
+# Amazon SES configuration (PREFERRED for better deliverability)
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
+SES_FROM_EMAIL = os.environ.get('SES_FROM_EMAIL', 'support@prespilot.com')
+
+# Determine which email service to use (SES preferred)
+if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
+    EMAIL_PROVIDER = 'SES'
+    logger.info("✅ Amazon SES configured (primary email provider)")
+    ses_client = boto3.client(
+        'ses',
+        region_name=AWS_REGION,
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+    )
+elif SENDGRID_API_KEY:
+    EMAIL_PROVIDER = 'SENDGRID'
+    logger.warning("⚠️  Using SendGrid (poor IP reputation score: 3/100)")
+else:
+    EMAIL_PROVIDER = None
+    logger.error("❌ No email provider configured! Set AWS credentials or SendGrid API key")
 
 # Twilio configuration for SMS
 TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
@@ -247,19 +272,53 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-def send_email(to_email, subject, html_content, plain_text_content=None):
+def send_email_ses(to_email, subject, html_content, plain_text_content=None):
     """
-    Generic helper function to send emails via SendGrid
-    Optimized for deliverability across all email providers (Gmail, AOL, Outlook, Yahoo, etc.)
+    Send email via Amazon SES (preferred for better deliverability)
     """
-    if not SENDGRID_API_KEY:
-        logger.error("SendGrid not configured - cannot send email")
+    try:
+        # Create plain text version if not provided
+        if not plain_text_content:
+            import re
+            plain_text_content = re.sub('<[^<]+?>', '', html_content)
+            plain_text_content = plain_text_content.replace('&nbsp;', ' ')
+            plain_text_content = '\n'.join(line.strip() for line in plain_text_content.split('\n') if line.strip())
+
+        # Send email via SES
+        response = ses_client.send_email(
+            Source=f'PresPilot <{SES_FROM_EMAIL}>',
+            Destination={'ToAddresses': [to_email]},
+            Message={
+                'Subject': {'Data': subject, 'Charset': 'UTF-8'},
+                'Body': {
+                    'Text': {'Data': plain_text_content, 'Charset': 'UTF-8'},
+                    'Html': {'Data': html_content, 'Charset': 'UTF-8'}
+                }
+            },
+            ReplyToAddresses=[SES_FROM_EMAIL]
+        )
+
+        message_id = response['MessageId']
+        logger.info(f"✅ Email sent via SES to {to_email}: {subject} (MessageId: {message_id})")
+        return True
+
+    except ClientError as e:
+        error_code = e.response['Error']['Code']
+        error_message = e.response['Error']['Message']
+        logger.error(f"❌ SES error sending to {to_email}: {error_code} - {error_message}")
+        return False
+    except Exception as e:
+        logger.error(f"❌ Failed to send email via SES to {to_email}: {str(e)}")
         return False
 
+
+def send_email_sendgrid(to_email, subject, html_content, plain_text_content=None):
+    """
+    Send email via SendGrid (fallback - has poor IP reputation)
+    """
     try:
-        # Create plain text version if not provided (helps with spam filters)
+        # Create plain text version if not provided
         if not plain_text_content:
-            # Strip HTML tags for basic plain text version
             import re
             plain_text_content = re.sub('<[^<]+?>', '', html_content)
             plain_text_content = plain_text_content.replace('&nbsp;', ' ')
@@ -270,24 +329,41 @@ def send_email(to_email, subject, html_content, plain_text_content=None):
             to_emails=To(to_email),
             subject=subject,
             html_content=html_content,
-            plain_text_content=plain_text_content  # Add plain text version
+            plain_text_content=plain_text_content
         )
 
-        # Add reply-to for better deliverability
         message.reply_to = Email(SENDGRID_FROM_EMAIL, "PresPilot Support")
 
-        # Disable click tracking to avoid SSL issues with tracking subdomains
-        # Transactional emails don't need click tracking
+        # Disable click tracking
         tracking_settings = TrackingSettings()
         tracking_settings.click_tracking = ClickTracking(enable=False, enable_text=False)
         message.tracking_settings = tracking_settings
 
         sg = SendGridAPIClient(SENDGRID_API_KEY)
         response = sg.send(message)
-        logger.info(f"✅ Email sent to {to_email}: {subject} (Status: {response.status_code})")
+        logger.info(f"✅ Email sent via SendGrid to {to_email}: {subject} (Status: {response.status_code})")
         return True
     except Exception as e:
-        logger.error(f"❌ Failed to send email to {to_email}: {str(e)}")
+        logger.error(f"❌ Failed to send email via SendGrid to {to_email}: {str(e)}")
+        return False
+
+
+def send_email(to_email, subject, html_content, plain_text_content=None):
+    """
+    Generic email sending function - routes to SES or SendGrid based on configuration
+    SES is preferred for better deliverability (SendGrid IP has reputation score of 3/100)
+    """
+    if not EMAIL_PROVIDER:
+        logger.error("❌ No email provider configured - cannot send email")
+        return False
+
+    if EMAIL_PROVIDER == 'SES':
+        return send_email_ses(to_email, subject, html_content, plain_text_content)
+    elif EMAIL_PROVIDER == 'SENDGRID':
+        logger.warning(f"⚠️  Using SendGrid with poor IP reputation for {to_email}")
+        return send_email_sendgrid(to_email, subject, html_content, plain_text_content)
+    else:
+        logger.error(f"❌ Unknown email provider: {EMAIL_PROVIDER}")
         return False
 
 def validate_email_address(email):
@@ -396,6 +472,81 @@ Support: support@prespilot.com
     '''
 
     return send_email(to_email, 'Your PresPilot Verification Code', html_content, plain_text)
+
+def send_welcome_email(to_email):
+    """Send welcome email after account creation (non-critical, can be deferred)"""
+
+    plain_text = f'''
+Welcome to PresPilot!
+
+Your account is ready! You can now start creating amazing presentations powered by AI.
+
+Getting Started:
+1. Log in at https://prespilot.com
+2. Click "Generate New Presentation"
+3. Enter your topic and let AI do the work!
+4. Customize and download your presentation
+
+Your subscription includes:
+- 10 AI presentations per month
+- All premium themes
+- Priority support
+
+Need help? Reply to this email or contact support@prespilot.com
+
+Happy creating!
+The PresPilot Team
+    '''
+
+    html_content = '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 20px 0;">
+            <tr>
+                <td align="center">
+                    <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; padding: 40px 30px; border-radius: 8px;">
+                        <tr>
+                            <td>
+                                <h2 style="color: #f59e0b; margin: 0 0 20px 0; font-size: 28px;">Welcome to PresPilot! 🎉</h2>
+                                <p style="color: #333333; font-size: 16px; line-height: 1.5; margin: 0 0 25px 0;">Your account is ready! You can now start creating amazing presentations powered by AI.</p>
+
+                                <div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                                    <h3 style="color: #92400e; margin: 0 0 15px 0;">Getting Started:</h3>
+                                    <ol style="color: #78350f; font-size: 15px; line-height: 1.8; margin: 0; padding-left: 20px;">
+                                        <li>Log in at prespilot.com</li>
+                                        <li>Click "Generate New Presentation"</li>
+                                        <li>Enter your topic and let AI do the work!</li>
+                                        <li>Customize and download your presentation</li>
+                                    </ol>
+                                </div>
+
+                                <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                                    <h3 style="color: #1f2937; margin: 0 0 15px 0;">Your Subscription Includes:</h3>
+                                    <ul style="color: #4b5563; font-size: 15px; line-height: 1.8; margin: 0; padding-left: 20px;">
+                                        <li>10 AI presentations per month</li>
+                                        <li>All premium themes</li>
+                                        <li>Priority support</li>
+                                    </ul>
+                                </div>
+
+                                <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 20px 0 0 0;">Need help? Reply to this email or contact support@prespilot.com</p>
+                                <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 10px 0 0 0;">Happy creating!<br>The PresPilot Team</p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    '''
+
+    return send_email(to_email, 'Welcome to PresPilot! 🎉', html_content, plain_text)
 
 def send_sms_verification(phone_number, verification_code):
     """Send SMS verification code via Twilio"""
@@ -1618,6 +1769,114 @@ def create_checkout_session():
     except Exception as e:
         logger.error(f"Checkout session error: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/payment/session-info', methods=['GET'])
+def get_session_info():
+    """Get email and subscription info from Stripe session after payment"""
+    try:
+        session_id = request.args.get('session_id')
+
+        if not session_id:
+            return jsonify({'error': 'Session ID is required'}), 400
+
+        # Retrieve session from Stripe
+        session = stripe.checkout.Session.retrieve(session_id)
+
+        customer_email = session.get('customer_details', {}).get('email')
+        stripe_customer_id = session.get('customer')
+        stripe_subscription_id = session.get('subscription')
+
+        if not customer_email:
+            return jsonify({'error': 'No email found in session'}), 404
+
+        return jsonify({
+            'email': customer_email,
+            'stripe_customer_id': stripe_customer_id,
+            'stripe_subscription_id': stripe_subscription_id
+        })
+
+    except Exception as e:
+        logger.error(f"Error retrieving session info: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/auth/create-account-after-payment', methods=['POST'])
+def create_account_after_payment():
+    """Create user account immediately after payment with password"""
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        password = data.get('password')
+
+        if not session_id or not password:
+            return jsonify({'error': 'Session ID and password are required'}), 400
+
+        # Retrieve session from Stripe
+        session = stripe.checkout.Session.retrieve(session_id)
+
+        customer_email = session.get('customer_details', {}).get('email', '').strip().lower()
+        stripe_customer_id = session.get('customer')
+        stripe_subscription_id = session.get('subscription')
+
+        if not customer_email:
+            return jsonify({'error': 'No email found in session'}), 404
+
+        # Validate email
+        is_valid, normalized_email, error_msg = validate_email_address(customer_email)
+        if not is_valid:
+            return jsonify({'error': error_msg}), 400
+
+        # Hash password
+        password_hash = generate_password_hash(password)
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Check if user already exists
+        existing_user = cursor.execute(
+            'SELECT id FROM users WHERE email = ?',
+            (normalized_email,)
+        ).fetchone()
+
+        if existing_user:
+            conn.close()
+            return jsonify({'error': 'Account already exists. Please sign in instead.'}), 400
+
+        # Create new user account
+        cursor.execute('''
+            INSERT INTO users (email, password_hash, subscription_status, generations_limit,
+                             stripe_customer_id, stripe_subscription_id, created_at, last_reset)
+            VALUES (?, ?, 'premium', 10, ?, ?, ?, ?)
+        ''', (normalized_email, password_hash, stripe_customer_id, stripe_subscription_id,
+              datetime.now().isoformat(), datetime.now().isoformat()))
+
+        user_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+
+        # Log user in
+        session['user_id'] = user_id
+        session['email'] = normalized_email
+
+        logger.info(f"✅ Created account for {normalized_email} after payment")
+
+        # Send welcome email (non-blocking, can be deferred without issues)
+        try:
+            send_welcome_email(normalized_email)
+        except Exception as e:
+            logger.error(f"Failed to send welcome email to {normalized_email}: {str(e)}")
+            # Don't fail account creation if welcome email fails
+
+        return jsonify({
+            'success': True,
+            'message': 'Account created successfully',
+            'user_id': user_id
+        })
+
+    except Exception as e:
+        logger.error(f"Error creating account after payment: {str(e)}")
+        return jsonify({'error': 'Failed to create account. Please contact support.'}), 500
+
 
 @app.route('/api/payment/webhook', methods=['POST'], strict_slashes=False)
 def stripe_webhook():
