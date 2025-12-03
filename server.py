@@ -648,7 +648,7 @@ def signup():
             return jsonify({'error': 'Email already registered'}), 400
         
         # Create user with NO free generations - subscription required
-        password_hash = hash_password(password)
+        password_hash = generate_password_hash(password)
         cursor.execute('''
             INSERT INTO users (email, password_hash, subscription_status, generations_limit, generations_used, last_reset)
             VALUES (?, ?, 'inactive', 0, 0, ?)
@@ -690,8 +690,8 @@ def login():
         
         user = cursor.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
         conn.close()
-        
-        if not user or user['password_hash'] != hash_password(password):
+
+        if not user or not check_password_hash(user['password_hash'], password):
             return jsonify({'error': 'Invalid email or password'}), 401
         
         session['user_id'] = user['id']
@@ -900,7 +900,7 @@ def reset_password():
             return jsonify({'error': 'Reset token has expired. Please request a new one.'}), 400
 
         # Update user password
-        new_password_hash = hash_password(new_password)
+        new_password_hash = generate_password_hash(new_password)
         cursor.execute('''
             UPDATE users
             SET password_hash = ?
