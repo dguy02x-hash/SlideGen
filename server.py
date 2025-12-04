@@ -1121,66 +1121,6 @@ Support: support@prespilot.com
         logger.error(f"Forgot password error: {str(e)}")
         return jsonify({'error': 'Failed to process password reset request'}), 500
 
-@app.route('/api/admin/generate-reset-link', methods=['POST'])
-@login_required
-def generate_reset_link_manual():
-    """
-    Admin endpoint to manually generate password reset link without sending email
-    Useful when email delivery fails (deferred, bounced, etc.)
-    User must be logged in to use this for their own account
-    """
-    try:
-        data = request.json
-        email = data.get('email', '').strip().lower()
-
-        if not email:
-            return jsonify({'error': 'Email is required'}), 400
-
-        # Only allow users to generate links for their own account
-        user_id = session['user_id']
-
-        conn = get_db()
-        cursor = conn.cursor()
-
-        user = cursor.execute('SELECT * FROM users WHERE id = ? AND email = ?', (user_id, email)).fetchone()
-
-        if not user:
-            conn.close()
-            return jsonify({'error': 'Unauthorized'}), 403
-
-        # Generate secure token
-        reset_token = secrets.token_urlsafe(32)
-        expires_at = datetime.utcnow() + timedelta(hours=1)
-
-        # Delete any existing reset tokens
-        cursor.execute('DELETE FROM password_reset_tokens WHERE user_id = ?', (user['id'],))
-
-        # Store new reset token
-        cursor.execute('''
-            INSERT INTO password_reset_tokens (user_id, token, expires_at)
-            VALUES (?, ?, ?)
-        ''', (user['id'], reset_token, expires_at.isoformat()))
-
-        conn.commit()
-        conn.close()
-
-        # Build reset URL
-        frontend_url = os.environ.get('FRONTEND_URL', request.host_url.rstrip('/'))
-        reset_url = f"{frontend_url}/reset-password.html?token={reset_token}"
-
-        logger.info(f"Manual password reset link generated for {email}")
-
-        return jsonify({
-            'success': True,
-            'reset_url': reset_url,
-            'expires_at': expires_at.isoformat(),
-            'message': 'Password reset link generated successfully. This link expires in 1 hour.'
-        })
-
-    except Exception as e:
-        logger.error(f"Generate reset link error: {str(e)}")
-        return jsonify({'error': 'Failed to generate reset link'}), 500
-
 @app.route('/api/auth/reset-password', methods=['POST'])
 def reset_password():
     """Reset password using valid token"""
