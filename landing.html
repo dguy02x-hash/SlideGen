@@ -890,14 +890,18 @@
                     const currentUser = data.user;
                     currentUserStatus = currentUser.subscription_status;
 
+                    console.log('User subscription status:', currentUser.subscription_status);
+
                     // Show cancel button only for active/premium subscribers (not cancelled)
                     if (currentUser.subscription_status === 'active' || currentUser.subscription_status === 'premium') {
+                        console.log('Showing cancel button for active/premium user');
                         document.getElementById('cancel-subscription-btn').style.display = 'inline-block';
                         document.getElementById('sign-in-btn').textContent = 'Go to App';
                         document.getElementById('sign-in-btn').href = '/app.html';
                         document.getElementById('get-started-btn').style.display = 'none';
                     } else if (currentUser.subscription_status === 'cancelled') {
                         // Cancelled users: show Go to App, hide cancel button
+                        console.log('Hiding cancel button for cancelled user');
                         document.getElementById('cancel-subscription-btn').style.display = 'none';
                         document.getElementById('sign-in-btn').textContent = 'Go to App';
                         document.getElementById('sign-in-btn').href = '/app.html';
@@ -968,16 +972,20 @@
                 });
 
                 const data = await response.json();
+                console.log('Cancel subscription response:', data);
 
                 if (response.ok) {
                     // Show success modal with cancellation details
+                    console.log('Showing modal with message:', data.message);
                     showModal(data.message || 'Subscription canceled successfully. You will have access until the end of your billing period.');
 
                     // Refresh page after 3 seconds to update button visibility
                     setTimeout(() => {
+                        console.log('Refreshing page...');
                         window.location.reload();
                     }, 3000);
                 } else {
+                    console.error('Cancel subscription failed:', data.error);
                     showModal(data.error || 'Failed to cancel subscription');
                     cancelBtn.disabled = false;
                     cancelBtn.textContent = originalText;
