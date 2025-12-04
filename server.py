@@ -2036,8 +2036,13 @@ def cancel_subscription():
             cancel_at_period_end=True
         )
 
-        # Get the cancellation date
-        cancel_date = datetime.fromtimestamp(subscription.current_period_end).strftime('%B %d, %Y')
+        # Get the cancellation date - try both attribute and dictionary access
+        try:
+            period_end = subscription.current_period_end
+        except (AttributeError, KeyError):
+            period_end = subscription.get('current_period_end')
+
+        cancel_date = datetime.fromtimestamp(period_end).strftime('%B %d, %Y')
 
         # Update database to mark subscription as cancelled (but still active until period end)
         conn = get_db()
