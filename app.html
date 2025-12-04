@@ -1003,7 +1003,8 @@
                     updateGenerationsDisplay();
 
                     // Check subscription status and redirect accordingly
-                    if (currentUser.subscription_status === 'active' || currentUser.subscription_status === 'premium') {
+                    // Allow active, premium, and cancelled users to access the app
+                    if (currentUser.subscription_status === 'active' || currentUser.subscription_status === 'premium' || currentUser.subscription_status === 'cancelled') {
                         showPage('topic-page');
                     } else {
                         showPage('subscription-page');
@@ -1624,7 +1625,8 @@
                     updateGenerationsDisplay();
 
                     // Check subscription status and redirect accordingly
-                    if (currentUser.subscription_status === 'active' || currentUser.subscription_status === 'premium') {
+                    // Allow active, premium, and cancelled users to access the app
+                    if (currentUser.subscription_status === 'active' || currentUser.subscription_status === 'premium' || currentUser.subscription_status === 'cancelled') {
                         showPage('topic-page');
                     } else {
                         showPage('subscription-page');
