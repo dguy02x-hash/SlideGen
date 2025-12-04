@@ -1131,8 +1131,22 @@
 
                 if (response.ok) {
                     showSuccessModal(data.message || 'Subscription canceled successfully');
-                    // Hide the cancel button after successful cancellation
-                    cancelBtn.style.display = 'none';
+
+                    // Log out user and redirect to home page after 3 seconds
+                    setTimeout(async () => {
+                        try {
+                            // Log out the user
+                            await fetch(`${API_URL}/api/auth/logout`, {
+                                method: 'POST',
+                                credentials: 'include'
+                            });
+                        } catch (error) {
+                            console.error('Logout error:', error);
+                        } finally {
+                            // Redirect to home page regardless of logout success
+                            window.location.href = '/landing.html';
+                        }
+                    }, 3000);
                 } else {
                     showErrorModal(data.error || 'Failed to cancel subscription');
                     cancelBtn.disabled = false;
