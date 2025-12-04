@@ -619,8 +619,8 @@ def check_generations_limit(user_id):
     if not user:
         return False
 
-    # Only premium users can generate
-    if user['subscription_status'] != 'premium':
+    # Only premium and cancelled (still active until period end) users can generate
+    if user['subscription_status'] not in ['premium', 'active', 'cancelled']:
         return False
 
     # Check if user has generations remaining
@@ -2028,6 +2028,17 @@ def cancel_subscription():
 
         # Get the cancellation date
         cancel_date = datetime.fromtimestamp(subscription.current_period_end).strftime('%B %d, %Y')
+
+        # Update database to mark subscription as cancelled (but still active until period end)
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE users
+            SET subscription_status = 'cancelled'
+            WHERE id = ?
+        ''', (user_id,))
+        conn.commit()
+        conn.close()
 
         logger.info(f"Subscription {subscription.id} will cancel on {cancel_date}")
 
