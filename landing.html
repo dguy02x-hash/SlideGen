@@ -583,6 +583,61 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-content h2 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .modal-content p {
+            color: #666;
+            margin-bottom: 1.5rem;
+            white-space: pre-line;
+            line-height: 1.6;
+        }
+
+        .modal-content .btn {
+            padding: 0.75rem 2rem;
+        }
     </style>
 </head>
 <body>
@@ -835,10 +890,15 @@
                     const currentUser = data.user;
                     currentUserStatus = currentUser.subscription_status;
 
-                    // Show cancel button only for active/premium subscribers
+                    // Show cancel button only for active/premium subscribers (not cancelled)
                     if (currentUser.subscription_status === 'active' || currentUser.subscription_status === 'premium') {
                         document.getElementById('cancel-subscription-btn').style.display = 'inline-block';
-                        // Optionally hide Sign In / Get Started buttons for logged-in users
+                        document.getElementById('sign-in-btn').textContent = 'Go to App';
+                        document.getElementById('sign-in-btn').href = '/app.html';
+                        document.getElementById('get-started-btn').style.display = 'none';
+                    } else if (currentUser.subscription_status === 'cancelled') {
+                        // Cancelled users: show Go to App, hide cancel button
+                        document.getElementById('cancel-subscription-btn').style.display = 'none';
                         document.getElementById('sign-in-btn').textContent = 'Go to App';
                         document.getElementById('sign-in-btn').href = '/app.html';
                         document.getElementById('get-started-btn').style.display = 'none';
@@ -910,24 +970,41 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    alert(data.message || 'Subscription canceled successfully. You will have access until the end of your billing period.');
+                    // Show success modal with cancellation details
+                    showModal(data.message || 'Subscription canceled successfully. You will have access until the end of your billing period.');
                     // Hide the cancel button after successful cancellation
                     cancelBtn.style.display = 'none';
-                    // Show get started button again
-                    document.getElementById('get-started-btn').style.display = 'inline-block';
-                    document.getElementById('sign-in-btn').textContent = 'Sign In';
+                    // Keep "Go to App" button visible (don't revert to sign in)
                 } else {
-                    alert(data.error || 'Failed to cancel subscription');
+                    showModal(data.error || 'Failed to cancel subscription');
                     cancelBtn.disabled = false;
                     cancelBtn.textContent = originalText;
                 }
             } catch (error) {
                 console.error('Cancel subscription error:', error);
-                alert('Failed to cancel subscription. Please try again.');
+                showModal('Failed to cancel subscription. Please try again.');
                 cancelBtn.disabled = false;
                 cancelBtn.textContent = originalText;
             }
         }
+
+        function showModal(message) {
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('success-modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('success-modal').classList.remove('active');
+        }
     </script>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="modal" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h2>✓ Subscription Cancelled</h2>
+            <p id="modal-message"></p>
+            <button class="btn btn-primary" onclick="closeModal()">OK</button>
+        </div>
+    </div>
 </body>
 </html>
