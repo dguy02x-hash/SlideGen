@@ -2031,21 +2031,31 @@ def cancel_subscription():
             }), 400
 
         # Cancel subscription at period end (keeps access until end of paid month)
-        subscription = stripe.Subscription.modify(
-            user['stripe_subscription_id'],
-            cancel_at_period_end=True
-        )
+        try:
+            subscription = stripe.Subscription.modify(
+                user['stripe_subscription_id'],
+                cancel_at_period_end=True
+            )
 
-        # Retrieve the full subscription to get current_period_end
-        subscription = stripe.Subscription.retrieve(user['stripe_subscription_id'])
+            logger.info(f"Successfully cancelled subscription {user['stripe_subscription_id']}")
 
-        # Get the cancellation date
-        period_end = subscription.current_period_end
-        if period_end:
-            cancel_date = datetime.fromtimestamp(period_end).strftime('%B %d, %Y')
-        else:
-            # Fallback if period_end is None
+            # Try to get cancellation date, but don't let it fail the whole operation
             cancel_date = "the end of your billing period"
+            try:
+                # Retrieve the full subscription to get current_period_end
+                subscription = stripe.Subscription.retrieve(user['stripe_subscription_id'])
+                period_end = subscription.get('current_period_end') or subscription.current_period_end
+
+                if period_end:
+                    cancel_date = datetime.fromtimestamp(period_end).strftime('%B %d, %Y')
+                    logger.info(f"Subscription ends on {cancel_date}")
+            except Exception as date_error:
+                logger.warning(f"Could not get cancellation date: {str(date_error)}")
+                # Continue with fallback message
+
+        except Exception as stripe_error:
+            logger.error(f"Stripe cancellation error: {str(stripe_error)}")
+            raise
 
         # Update database to mark subscription as cancelled (but still active until period end)
         conn = get_db()
@@ -2058,11 +2068,11 @@ def cancel_subscription():
         conn.commit()
         conn.close()
 
-        logger.info(f"Subscription {subscription.id} will cancel on {cancel_date}")
+        logger.info(f"User {user_id} status updated to 'cancelled' in database")
 
         return jsonify({
             'success': True,
-            'message': f'✅ Subscription Successfully Cancelled\n\nYou will continue to have full access until {cancel_date}.\n\nYou can still generate presentations and use all premium features until then.\n\nThank you for using PresPilot!'
+            'message': f'Subscription Successfully Cancelled!\n\nYou will have access for the remainder of your subscription period (until {cancel_date}).\n\nThank you for using PresPilot!'
         })
 
     except Exception as e:
