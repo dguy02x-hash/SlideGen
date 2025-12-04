@@ -2036,13 +2036,16 @@ def cancel_subscription():
             cancel_at_period_end=True
         )
 
-        # Get the cancellation date - try both attribute and dictionary access
-        try:
-            period_end = subscription.current_period_end
-        except (AttributeError, KeyError):
-            period_end = subscription.get('current_period_end')
+        # Retrieve the full subscription to get current_period_end
+        subscription = stripe.Subscription.retrieve(user['stripe_subscription_id'])
 
-        cancel_date = datetime.fromtimestamp(period_end).strftime('%B %d, %Y')
+        # Get the cancellation date
+        period_end = subscription.current_period_end
+        if period_end:
+            cancel_date = datetime.fromtimestamp(period_end).strftime('%B %d, %Y')
+        else:
+            # Fallback if period_end is None
+            cancel_date = "the end of your billing period"
 
         # Update database to mark subscription as cancelled (but still active until period end)
         conn = get_db()
