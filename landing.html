@@ -972,9 +972,11 @@
                 if (response.ok) {
                     // Show success modal with cancellation details
                     showModal(data.message || 'Subscription canceled successfully. You will have access until the end of your billing period.');
-                    // Hide the cancel button after successful cancellation
-                    cancelBtn.style.display = 'none';
-                    // Keep "Go to App" button visible (don't revert to sign in)
+
+                    // Refresh page after 3 seconds to update button visibility
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 3000);
                 } else {
                     showModal(data.error || 'Failed to cancel subscription');
                     cancelBtn.disabled = false;
