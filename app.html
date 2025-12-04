@@ -810,7 +810,7 @@
                 Your presentation "<span id="complete-title"></span>" is ready!
             </div>
             
-            <button class="btn btn-primary" onclick="downloadPresentation()">View & Download Presentation</button>
+            <button id="download-btn" class="btn btn-primary" onclick="downloadPresentation()">Download Presentation</button>
             <button class="btn btn-secondary" onclick="goHome()">Create Another Presentation</button>
         </div>
     </div>
@@ -1550,7 +1550,14 @@
 
                 // Show success and go back to complete page
                 showPage('complete-page');
-                showSuccessModal('PowerPoint presentation downloaded successfully!');
+
+                // Hide download button to prevent duplicate generations
+                const downloadBtn = document.getElementById('download-btn');
+                if (downloadBtn) {
+                    downloadBtn.style.display = 'none';
+                }
+
+                showSuccessModal('✅ Presentation Downloaded Successfully!\n\nGo to your downloads folder to view the presentation.');
             })
             .catch(error => {
                 clearTimeout(timeoutId); // Clear timeout on error
@@ -1579,6 +1586,12 @@
             document.getElementById('document-upload').value = '';
             document.getElementById('file-display').style.display = 'none';
             document.getElementById('file-status').textContent = '';
+
+            // Show download button again for new presentation
+            const downloadBtn = document.getElementById('download-btn');
+            if (downloadBtn) {
+                downloadBtn.style.display = 'inline-block';
+            }
 
             updateGenerationsDisplay();
             showPage('topic-page');
