@@ -1067,7 +1067,8 @@
                 const remaining = currentUser.generations_limit - currentUser.generations_used;
                 document.querySelector('.generations-counter .count').textContent = remaining;
 
-                if (currentUser.subscription_status === 'free' && remaining === 0) {
+                // Show upgrade banner for free/inactive users with no generations
+                if ((currentUser.subscription_status === 'free' || currentUser.subscription_status === 'inactive') && remaining === 0) {
                     document.getElementById('upgrade-banner').style.display = 'block';
                 }
 

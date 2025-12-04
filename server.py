@@ -1789,10 +1789,20 @@ def get_session_info():
         if not customer_email:
             return jsonify({'error': 'No email found in session'}), 404
 
+        # Check if user already exists (resubscribing)
+        conn = get_db()
+        cursor = conn.cursor()
+        existing_user = cursor.execute(
+            'SELECT id FROM users WHERE email = ?',
+            (customer_email.lower(),)
+        ).fetchone()
+        conn.close()
+
         return jsonify({
             'email': customer_email,
             'stripe_customer_id': stripe_customer_id,
-            'stripe_subscription_id': stripe_subscription_id
+            'stripe_subscription_id': stripe_subscription_id,
+            'user_exists': existing_user is not None
         })
 
     except Exception as e:

@@ -219,6 +219,18 @@
             .then(data => {
                 if (data.email) {
                     emailInput.value = data.email;
+
+                    // Check if user already exists (resubscribing)
+                    if (data.user_exists) {
+                        // Existing user - subscription reactivated, redirect to login
+                        showMessage('✅ Subscription reactivated! Redirecting to login...', 'success');
+                        document.getElementById('account-form').style.display = 'none';
+                        document.querySelector('.subtitle').textContent = 'Your subscription has been reactivated successfully!';
+
+                        setTimeout(() => {
+                            window.location.href = '/app.html';
+                        }, 2000);
+                    }
                 } else {
                     showMessage('Could not retrieve email. Please contact support.', 'error');
                     submitBtn.disabled = true;
