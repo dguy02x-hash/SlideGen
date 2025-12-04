@@ -1358,7 +1358,19 @@
             }
 
             showPage('generating-page');
-            
+
+            // Reset text for initial creation
+            const loadingTitle = document.querySelector('#generating-page .logo h1');
+            if (loadingTitle) {
+                loadingTitle.textContent = 'Creating Your Presentation';
+            }
+
+            // Show time estimate for initial creation
+            const timeEstimateElement = document.querySelector('#generating-page .loading p:last-child');
+            if (timeEstimateElement) {
+                timeEstimateElement.style.display = 'block';
+            }
+
             try {
                 // Research topic with notes_style
                 const response = await fetch(`${API_URL}/api/research`, {
@@ -1458,10 +1470,16 @@
             // Show loading modal
             showPage('generating-page');
 
-            // Update expected time message
+            // Update text for downloading
+            const loadingTitle = document.querySelector('#generating-page .logo h1');
+            if (loadingTitle) {
+                loadingTitle.textContent = 'Downloading Presentation';
+            }
+
+            // Hide time estimate for download (keep for initial creation)
             const timeEstimateElement = document.querySelector('#generating-page .loading p:last-child');
             if (timeEstimateElement) {
-                timeEstimateElement.textContent = 'Expected time: 2-3 minutes with detailed AI speaker notes';
+                timeEstimateElement.style.display = 'none';
             }
 
             // Generate and download the actual PowerPoint file
