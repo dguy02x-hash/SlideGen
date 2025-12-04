@@ -2033,7 +2033,7 @@ def cancel_subscription():
 
         return jsonify({
             'success': True,
-            'message': f'Your subscription will remain active until {cancel_date}. You can still create presentations until then.'
+            'message': f'✅ Subscription Successfully Cancelled\n\nYou will continue to have full access until {cancel_date}.\n\nYou can still generate presentations and use all premium features until then.\n\nThank you for using PresPilot!'
         })
 
     except Exception as e:
