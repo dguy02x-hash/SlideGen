@@ -222,14 +222,14 @@
 
                     // Check if user already exists (returning customer)
                     if (data.user_exists) {
-                        // Existing user - credit added, redirect to app
-                        showMessage('✅ Credit added to your account! Redirecting...', 'success');
+                        // Existing user - credit added, redirect to generation page
+                        showMessage('✅ Credit added! Redirecting to create your presentation...', 'success');
                         document.getElementById('account-form').style.display = 'none';
                         document.querySelector('.subtitle').textContent = 'Your credit has been added successfully!';
 
                         setTimeout(() => {
-                            window.location.href = '/app.html';
-                        }, 2000);
+                            window.location.href = '/app.html#generate';
+                        }, 1500);
                     }
                 } else {
                     showMessage('Could not retrieve email. Please contact support.', 'error');
@@ -292,9 +292,9 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    showMessage('✅ Account created! Redirecting to dashboard...', 'success');
+                    showMessage('✅ Account created! Redirecting to create your presentation...', 'success');
                     setTimeout(() => {
-                        window.location.href = '/app.html';
+                        window.location.href = '/app.html#generate';
                     }, 1500);
                 } else {
                     showMessage(data.error || 'Failed to create account. Please try again.', 'error');

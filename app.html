@@ -1634,10 +1634,17 @@
                     currentUser = data.user;
                     updateGenerationsDisplay();
 
+                    // Check if coming from payment success (hash = #generate)
+                    const fromPayment = window.location.hash === '#generate';
+
                     // Check if user has credits remaining
                     const remaining = currentUser.generations_limit - currentUser.generations_used;
-                    if (remaining > 0) {
+                    if (remaining > 0 || fromPayment) {
                         showPage('topic-page');
+                        // Clear the hash
+                        if (fromPayment) {
+                            history.replaceState(null, '', '/app.html');
+                        }
                     } else {
                         // No credits - show payment page
                         showPage('subscription-page');
