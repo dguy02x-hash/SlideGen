@@ -553,26 +553,27 @@
         </div>
     </div>
 
-    <!-- Subscription Page -->
+    <!-- Payment Page (Pay-per-generation) -->
     <div id="subscription-page" class="page">
         <div class="card">
             <div class="logo">
-                <h1>Subscribe to PresPilot</h1>
-                <p>Get started with premium features</p>
+                <h1>Generate a Presentation</h1>
+                <p>Pay only for what you create</p>
             </div>
 
             <div style="text-align: center; margin: 30px 0;">
                 <div style="font-size: 48px; font-weight: bold; color: #FF8C00; margin-bottom: 10px;">
-                    $5.99<span style="font-size: 20px; font-weight: normal; color: #666;">/month</span>
+                    $0.99<span style="font-size: 20px; font-weight: normal; color: #666;">/presentation</span>
                 </div>
+                <p style="color: #666; font-size: 14px;">No subscription required</p>
             </div>
 
             <div style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 140, 0, 0.1) 100%); padding: 25px; border-radius: 15px; margin: 20px 0;">
-                <h3 style="margin-bottom: 15px; font-size: 18px; color: #333;">Premium Features Include:</h3>
+                <h3 style="margin-bottom: 15px; font-size: 18px; color: #333;">Each presentation includes:</h3>
                 <ul style="list-style: none; padding: 0; margin: 0;">
                     <li style="padding: 10px 0; display: flex; align-items: center; gap: 12px; font-size: 15px;">
                         <span style="color: #FF8C00; font-size: 20px; font-weight: bold;">✓</span>
-                        <span>10 AI-generated presentations per month</span>
+                        <span>AI-generated professional slides</span>
                     </li>
                     <li style="padding: 10px 0; display: flex; align-items: center; gap: 12px; font-size: 15px;">
                         <span style="color: #FF8C00; font-size: 20px; font-weight: bold;">✓</span>
@@ -588,13 +589,13 @@
                     </li>
                     <li style="padding: 10px 0; display: flex; align-items: center; gap: 12px; font-size: 15px;">
                         <span style="color: #FF8C00; font-size: 20px; font-weight: bold;">✓</span>
-                        <span>Priority support</span>
+                        <span>Export to PowerPoint (.pptx)</span>
                     </li>
                 </ul>
             </div>
 
-            <button class="btn btn-primary" onclick="upgradeSubscription()" style="margin-top: 20px; font-size: 18px; padding: 16px;">
-                Subscribe Now with Stripe
+            <button class="btn btn-primary" onclick="purchaseGeneration()" style="margin-top: 20px; font-size: 18px; padding: 16px;">
+                Buy 1 Presentation - $0.99
             </button>
 
             <button class="btn btn-secondary" onclick="logout()">Logout</button>
@@ -612,13 +613,13 @@
             </div>
 
             <div id="generations-display" class="generations-counter">
-                <h3>Generations Remaining</h3>
+                <h3>Credits Remaining</h3>
                 <div class="count">-</div>
             </div>
-            
+
             <div id="upgrade-banner" class="upgrade-banner" style="display: none;">
-                🌟 Subscribe for only $5.99/month and get 10 presentations per month!
-                <button class="btn btn-primary" style="margin-top: 10px;" onclick="upgradeSubscription()">Subscribe Now</button>
+                You need credits to generate presentations. Only $0.99 per presentation!
+                <button class="btn btn-primary" style="margin-top: 10px;" onclick="purchaseGeneration()">Buy Credit - $0.99</button>
             </div>
             
             <div id="topic-error" class="error-message"></div>
@@ -1002,11 +1003,12 @@
                     currentUser = data.user;
                     updateGenerationsDisplay();
 
-                    // Check subscription status and redirect accordingly
-                    // Allow active, premium, and cancelled users to access the app
-                    if (currentUser.subscription_status === 'active' || currentUser.subscription_status === 'premium' || currentUser.subscription_status === 'cancelled') {
+                    // Check if user has credits remaining
+                    const remaining = currentUser.generations_limit - currentUser.generations_used;
+                    if (remaining > 0) {
                         showPage('topic-page');
                     } else {
+                        // No credits - show payment page
                         showPage('subscription-page');
                     }
                 } else {
@@ -1035,7 +1037,7 @@
 
                 if (response.ok) {
                     currentUser = data.user;
-                    showSuccessModal('Account created successfully! Please subscribe to start creating presentations.');
+                    showSuccessModal('Account created successfully! Purchase credits to start creating presentations.');
                     setTimeout(() => {
                         closeModal();
                         updateGenerationsDisplay();
@@ -1068,30 +1070,33 @@
                 const remaining = currentUser.generations_limit - currentUser.generations_used;
                 document.querySelector('.generations-counter .count').textContent = remaining;
 
-                // Show upgrade banner for free/inactive users with no generations
-                if ((currentUser.subscription_status === 'free' || currentUser.subscription_status === 'inactive') && remaining === 0) {
+                // Show purchase banner when user has no credits
+                if (remaining <= 0) {
                     document.getElementById('upgrade-banner').style.display = 'block';
+                } else {
+                    document.getElementById('upgrade-banner').style.display = 'none';
                 }
 
-                // Show cancel button only for active/premium subscribers
+                // Hide cancel button (no longer needed for pay-per-generation)
                 const cancelBtn = document.getElementById('cancel-subscription-btn');
-                if (cancelBtn && (currentUser.subscription_status === 'active' || currentUser.subscription_status === 'premium')) {
-                    cancelBtn.style.display = 'block';
-                } else if (cancelBtn) {
+                if (cancelBtn) {
                     cancelBtn.style.display = 'none';
                 }
             }
         }
 
-        async function upgradeSubscription() {
+        async function purchaseGeneration() {
             try {
-                // Create Stripe Checkout session
+                // Create Stripe Checkout session for one-time payment
                 const response = await fetch(`${API_URL}/api/payment/create-checkout-session`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    credentials: 'include'
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        email: currentUser?.email
+                    })
                 });
 
                 const data = await response.json();
@@ -1106,6 +1111,11 @@
                 console.error('Checkout error:', error);
                 showErrorModal('Failed to start checkout. Please try again.');
             }
+        }
+
+        // Alias for backwards compatibility
+        async function upgradeSubscription() {
+            return purchaseGeneration();
         }
 
         async function cancelSubscription() {
@@ -1624,11 +1634,12 @@
                     currentUser = data.user;
                     updateGenerationsDisplay();
 
-                    // Check subscription status and redirect accordingly
-                    // Allow active, premium, and cancelled users to access the app
-                    if (currentUser.subscription_status === 'active' || currentUser.subscription_status === 'premium' || currentUser.subscription_status === 'cancelled') {
+                    // Check if user has credits remaining
+                    const remaining = currentUser.generations_limit - currentUser.generations_used;
+                    if (remaining > 0) {
                         showPage('topic-page');
                     } else {
+                        // No credits - show payment page
                         showPage('subscription-page');
                     }
                 }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Your Account - PresPilot</title>
+    <title>Payment Successful - PresPilot</title>
     <style>
         * {
             margin: 0;
@@ -159,7 +159,7 @@
     <div class="container">
         <div class="success-icon">✅</div>
         <h1>Payment Successful!</h1>
-        <p class="subtitle">Create your account to get started</p>
+        <p class="subtitle">Create your account to start generating</p>
 
         <div id="message" class="message"></div>
 
@@ -168,7 +168,7 @@
                 <label for="email">Email Address</label>
                 <input type="email" id="email" name="email" required readonly>
                 <div class="password-requirements">
-                    Your subscription email from Stripe
+                    Your payment email from Stripe
                 </div>
             </div>
 
@@ -220,12 +220,12 @@
                 if (data.email) {
                     emailInput.value = data.email;
 
-                    // Check if user already exists (resubscribing)
+                    // Check if user already exists (returning customer)
                     if (data.user_exists) {
-                        // Existing user - subscription reactivated, redirect to login
-                        showMessage('✅ Subscription reactivated! Redirecting to login...', 'success');
+                        // Existing user - credit added, redirect to app
+                        showMessage('✅ Credit added to your account! Redirecting...', 'success');
                         document.getElementById('account-form').style.display = 'none';
-                        document.querySelector('.subtitle').textContent = 'Your subscription has been reactivated successfully!';
+                        document.querySelector('.subtitle').textContent = 'Your credit has been added successfully!';
 
                         setTimeout(() => {
                             window.location.href = '/app.html';

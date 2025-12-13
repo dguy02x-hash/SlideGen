@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-PresPilot - Backend Server with Authentication & Subscriptions
-PAYMENT REQUIRED - No free tier, users must subscribe to generate presentations.
+PresPilot - Backend Server with Pay-Per-Generation Model
+PAYMENT REQUIRED - Users pay $0.99 per presentation generated.
 """
 
 from flask import Flask, request, jsonify, session, send_from_directory
@@ -65,7 +65,7 @@ MODEL = "claude-sonnet-4-20250514"
 
 # Stripe configuration
 stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
-STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID')  # Your $5.99/month price ID from Stripe
+STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID')  # Your $0.99 per-generation price ID from Stripe
 STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
 
 if not stripe.api_key:
@@ -609,7 +609,7 @@ def subscription_required(f):
     return decorated_function
 
 def check_generations_limit(user_id):
-    """Check if user has generations available (resets happen via Stripe billing cycle webhook)"""
+    """Check if user has generations available (pay-per-generation model)"""
     conn = get_db()
     cursor = conn.cursor()
 
@@ -619,12 +619,11 @@ def check_generations_limit(user_id):
     if not user:
         return False
 
-    # Only premium and cancelled (still active until period end) users can generate
+    # Check if user has generations remaining (bought credits)
+    # User must have active status and available credits
     if user['subscription_status'] not in ['premium', 'active', 'cancelled']:
         return False
 
-    # Check if user has generations remaining
-    # Note: Generations reset automatically when Stripe charges them (invoice.payment_succeeded webhook)
     return user['generations_used'] < user['generations_limit']
 
 def increment_generation_count(user_id):
@@ -855,7 +854,7 @@ CORRECTED TEXT:"""
 
 @app.route('/api/auth/signup', methods=['POST'])
 def signup():
-    """Create new user account - NO FREE PRESENTATIONS"""
+    """Create new user account - pay-per-generation model"""
     try:
         data = request.json
         email = data.get('email', '').strip().lower()
@@ -874,36 +873,36 @@ def signup():
 
         if len(password) < 6:
             return jsonify({'error': 'Password must be at least 6 characters'}), 400
-        
+
         conn = get_db()
         cursor = conn.cursor()
-        
+
         # Check if email exists
         existing = cursor.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
         if existing:
             conn.close()
             return jsonify({'error': 'Email already registered'}), 400
-        
-        # Create user with NO free generations - subscription required
+
+        # Create user with 0 generations - must pay $0.99 per presentation
         password_hash = generate_password_hash(password)
         cursor.execute('''
-            INSERT INTO users (email, password_hash, subscription_status, generations_limit, generations_used, last_reset)
+            INSERT INTO users (email, password_hash, subscription_status, generations_limit, generations_used, created_at)
             VALUES (?, ?, 'inactive', 0, 0, ?)
         ''', (email, password_hash, datetime.now().isoformat()))
-        
+
         user_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        
+
         # Auto-login
         session['user_id'] = user_id
         session['email'] = email
-        
-        logger.info(f"New user registered: {email} - Subscription required")
+
+        logger.info(f"New user registered: {email} - Pay-per-generation model")
         return jsonify({
             'success': True,
-            'message': 'Account created! Subscribe now to start creating presentations.',
-            'subscription_required': True,
+            'message': 'Account created! Pay $0.99 to generate your first presentation.',
+            'payment_required': True,
             'user': {'id': user_id, 'email': email}
         })
     
@@ -1748,20 +1747,39 @@ def payment_config():
 
 @app.route('/api/payment/create-checkout-session', methods=['POST'])
 def create_checkout_session():
-    """Create Stripe checkout session for subscription - no login required"""
+    """Create Stripe checkout session for per-generation payment ($0.99)"""
     try:
-        # Create checkout session - customer email will be collected by Stripe
+        data = request.json or {}
+
+        # For new users who need to create an account after payment
+        # We'll store presentation data in the session metadata
+        presentation_data = data.get('presentation_data', {})
+        user_email = data.get('email')  # If user is logged in
+
+        # Get user_id from session if logged in
+        user_id = session.get('user_id')
+
+        metadata = {
+            'presentation_title': presentation_data.get('title', ''),
+            'presentation_topic': presentation_data.get('topic', ''),
+        }
+
+        if user_id:
+            metadata['user_id'] = str(user_id)
+
+        # Create one-time payment checkout session
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
                 'price': STRIPE_PRICE_ID,
                 'quantity': 1,
             }],
-            mode='subscription',
+            mode='payment',  # One-time payment, not subscription
             success_url=request.host_url + 'payment-success?session_id={CHECKOUT_SESSION_ID}',
-            cancel_url=request.host_url,
-            customer_email=None,  # Let Stripe collect email
+            cancel_url=request.host_url + 'app.html',
+            customer_email=user_email,  # Pre-fill if user is logged in
             allow_promotion_codes=True,
+            metadata=metadata,
         )
 
         return jsonify({'url': checkout_session.url, 'sessionId': checkout_session.id})
@@ -1812,7 +1830,7 @@ def get_session_info():
 
 @app.route('/api/auth/create-account-after-payment', methods=['POST'])
 def create_account_after_payment():
-    """Create user account immediately after payment with password"""
+    """Create user account immediately after payment with password - grants 1 generation credit"""
     try:
         data = request.json
         session_id = data.get('session_id')
@@ -1822,11 +1840,11 @@ def create_account_after_payment():
             return jsonify({'error': 'Session ID and password are required'}), 400
 
         # Retrieve session from Stripe
-        session = stripe.checkout.Session.retrieve(session_id)
+        stripe_session = stripe.checkout.Session.retrieve(session_id)
 
-        customer_email = session.get('customer_details', {}).get('email', '').strip().lower()
-        stripe_customer_id = session.get('customer')
-        stripe_subscription_id = session.get('subscription')
+        customer_email = stripe_session.get('customer_details', {}).get('email', '').strip().lower()
+        stripe_customer_id = stripe_session.get('customer')
+        payment_intent_id = stripe_session.get('payment_intent')
 
         if not customer_email:
             return jsonify({'error': 'No email found in session'}), 404
@@ -1852,15 +1870,22 @@ def create_account_after_payment():
             conn.close()
             return jsonify({'error': 'Account already exists. Please sign in instead.'}), 400
 
-        # Create new user account
+        # Create new user account with 1 generation credit (pay-per-generation model)
         cursor.execute('''
             INSERT INTO users (email, password_hash, subscription_status, generations_limit,
-                             stripe_customer_id, stripe_subscription_id, created_at, last_reset)
-            VALUES (?, ?, 'premium', 10, ?, ?, ?, ?)
-        ''', (normalized_email, password_hash, stripe_customer_id, stripe_subscription_id,
-              datetime.now().isoformat(), datetime.now().isoformat()))
+                             generations_used, stripe_customer_id, created_at)
+            VALUES (?, ?, 'active', 1, 0, ?, ?)
+        ''', (normalized_email, password_hash, stripe_customer_id,
+              datetime.now().isoformat()))
 
         user_id = cursor.lastrowid
+
+        # Record the payment
+        cursor.execute('''
+            INSERT INTO payment_history (user_id, stripe_payment_id, amount, status)
+            VALUES (?, ?, 0.99, 'succeeded')
+        ''', (user_id, payment_intent_id))
+
         conn.commit()
         conn.close()
 
@@ -1868,7 +1893,7 @@ def create_account_after_payment():
         session['user_id'] = user_id
         session['email'] = normalized_email
 
-        logger.info(f"✅ Created account for {normalized_email} after payment")
+        logger.info(f"✅ Created account for {normalized_email} after payment - 1 generation credit")
 
         # Send welcome email (non-blocking, can be deferred without issues)
         try:
@@ -1890,12 +1915,12 @@ def create_account_after_payment():
 
 @app.route('/api/payment/webhook', methods=['POST'], strict_slashes=False)
 def stripe_webhook():
-    """Handle Stripe webhooks"""
+    """Handle Stripe webhooks for per-generation payments"""
     payload = request.data
     sig_header = request.headers.get('Stripe-Signature')
-    
+
     webhook_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
-    
+
     try:
         event = stripe.Webhook.construct_event(
             payload, sig_header, webhook_secret
@@ -1908,92 +1933,99 @@ def stripe_webhook():
             logger.error(f"Invalid signature: {str(e)}")
             return jsonify({'error': 'Invalid signature'}), 400
         raise
-    
-    # Handle subscription events
+
+    # Handle one-time payment events
     if event['type'] == 'checkout.session.completed':
         session_obj = event['data']['object']
         session_id = session_obj['id']
         customer_email = session_obj.get('customer_details', {}).get('email')
         stripe_customer_id = session_obj.get('customer')
-        stripe_subscription_id = session_obj.get('subscription')
+        payment_intent_id = session_obj.get('payment_intent')
+        metadata = session_obj.get('metadata', {})
+        user_id_from_metadata = metadata.get('user_id')
 
         conn = get_db()
         cursor = conn.cursor()
 
         try:
             # Check if user already exists
-            existing_user = cursor.execute(
-                'SELECT id FROM users WHERE email = ?',
-                (customer_email.lower(),)
-            ).fetchone()
+            existing_user = None
+            if user_id_from_metadata:
+                existing_user = cursor.execute(
+                    'SELECT id, email FROM users WHERE id = ?',
+                    (user_id_from_metadata,)
+                ).fetchone()
+            elif customer_email:
+                existing_user = cursor.execute(
+                    'SELECT id, email FROM users WHERE email = ?',
+                    (customer_email.lower(),)
+                ).fetchone()
 
             if existing_user:
-                # User exists - update their subscription status directly (re-subscribing)
+                # User exists - grant them 1 generation credit
                 cursor.execute('''
                     UPDATE users
-                    SET subscription_status = 'premium',
-                        generations_limit = 10,
-                        generations_used = 0,
-                        stripe_customer_id = ?,
-                        stripe_subscription_id = ?,
-                        last_reset = ?
+                    SET subscription_status = 'active',
+                        generations_limit = generations_limit + 1,
+                        stripe_customer_id = ?
                     WHERE id = ?
-                ''', (stripe_customer_id, stripe_subscription_id, datetime.now().isoformat(), existing_user['id']))
+                ''', (stripe_customer_id, existing_user['id']))
+
+                # Record the payment
+                cursor.execute('''
+                    INSERT INTO payment_history (user_id, stripe_payment_id, amount, status)
+                    VALUES (?, ?, 0.99, 'succeeded')
+                ''', (existing_user['id'], payment_intent_id))
+
                 conn.commit()
-                logger.info(f"✅ Upgraded existing user {customer_email} to premium")
+                logger.info(f"✅ Payment received for {existing_user['email']} - Added 1 generation credit")
             else:
                 # New user - account will be created when they set password on payment-success page
-                # No confirmation email needed - they create account immediately after payment
-                logger.info(f"✅ New subscription for {customer_email} - account will be created on payment-success page")
+                # Store pending payment info to be processed when account is created
+                logger.info(f"✅ New payment for {customer_email} - account will be created on payment-success page")
         except Exception as e:
             logger.error(f"Error handling checkout session: {str(e)}")
         finally:
             conn.close()
-    
+
+    elif event['type'] == 'payment_intent.succeeded':
+        # Handle successful payment intents (backup for checkout.session.completed)
+        payment_intent = event['data']['object']
+        logger.info(f"✅ Payment intent succeeded: {payment_intent['id']}")
+
+    # Keep subscription handlers for backwards compatibility with existing subscribers
     elif event['type'] == 'invoice.payment_succeeded':
         invoice = event['data']['object']
         subscription_id = invoice.get('subscription')
 
-        # Record payment and reset generation count
-        conn = get_db()
-        cursor = conn.cursor()
-        user = cursor.execute(
-            'SELECT id FROM users WHERE stripe_subscription_id = ?',
-            (subscription_id,)
-        ).fetchone()
+        if subscription_id:
+            # Legacy: Record subscription payment
+            conn = get_db()
+            cursor = conn.cursor()
+            user = cursor.execute(
+                'SELECT id FROM users WHERE stripe_subscription_id = ?',
+                (subscription_id,)
+            ).fetchone()
 
-        if user:
-            # Record the payment
-            cursor.execute('''
-                INSERT INTO payment_history (user_id, stripe_payment_id, amount, status)
-                VALUES (?, ?, ?, ?)
-            ''', (user['id'], invoice['id'], invoice['amount_paid'] / 100, 'succeeded'))
+            if user:
+                cursor.execute('''
+                    INSERT INTO payment_history (user_id, stripe_payment_id, amount, status)
+                    VALUES (?, ?, ?, ?)
+                ''', (user['id'], invoice['id'], invoice['amount_paid'] / 100, 'succeeded'))
+                conn.commit()
+                logger.info(f"✅ Legacy subscription payment for user {user['id']}")
 
-            # Reset generation count to 10 for the new billing cycle
-            cursor.execute('''
-                UPDATE users
-                SET generations_used = 0,
-                    generations_limit = 10,
-                    last_reset = ?
-                WHERE id = ?
-            ''', (datetime.now().isoformat(), user['id']))
+            conn.close()
 
-            conn.commit()
-            logger.info(f"✅ Payment succeeded for user {user['id']} - Reset generations to 10 (0 used)")
-
-        conn.close()
-    
     elif event['type'] == 'customer.subscription.deleted':
+        # Legacy: Handle subscription cancellation for existing subscribers
         subscription = event['data']['object']
-        
-        # Downgrade to inactive (no free tier)
+
         conn = get_db()
         cursor = conn.cursor()
         cursor.execute('''
-            UPDATE users 
+            UPDATE users
             SET subscription_status = 'inactive',
-                generations_limit = 0,
-                generations_used = 0,
                 stripe_subscription_id = NULL
             WHERE stripe_subscription_id = ?
         ''', (subscription['id'],))
@@ -2666,11 +2698,11 @@ def generate_pptx():
         from flask import send_file
         import tempfile
 
-        # Check generations limit BEFORE generating
+        # Check generations limit BEFORE generating (pay-per-generation model)
         user_id = session.get('user_id', 'anonymous')
 
         if user_id != 'anonymous':
-            # Check if user has generations remaining
+            # Check if user has generations remaining (purchased credits)
             if not check_generations_limit(user_id):
                 conn = get_db()
                 cursor = conn.cursor()
@@ -2678,8 +2710,8 @@ def generate_pptx():
                 conn.close()
 
                 return jsonify({
-                    'error': 'Generation limit reached for this month',
-                    'limit_reached': True,
+                    'error': 'No generation credits remaining. Purchase more to continue.',
+                    'payment_required': True,
                     'subscription_status': user['subscription_status'],
                     'generations_used': user['generations_used'],
                     'generations_limit': user['generations_limit']
