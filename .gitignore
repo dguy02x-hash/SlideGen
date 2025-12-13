@@ -63,3 +63,10 @@ server_*.py
 # Binaries
 stripe
 *.pptx
+
+# Admin scripts with sensitive data
+create_giveaway_account.py
+grant_premium.py
+create_temp_premium.py
+get_password_reset_token.py
+fix_stripe_link.py
