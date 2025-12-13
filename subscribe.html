@@ -241,7 +241,8 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    credentials: 'include'
+                    credentials: 'include',
+                    body: JSON.stringify({})
                 });
 
                 const data = await response.json();
@@ -258,7 +259,7 @@
                 console.error('Error:', error);
                 alert('Network error. Please check your connection and try again.');
                 btn.disabled = false;
-                btn.textContent = 'Subscribe Now';
+                btn.textContent = 'Buy Now - $0.99';
             }
         });
     </script>
