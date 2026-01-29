@@ -652,7 +652,7 @@
             </ul>
             <div class="nav-buttons">
                 <a href="/app.html" class="btn btn-secondary" id="sign-in-btn" onclick="handleSignInClick(event)">Sign In</a>
-                <a href="/subscribe.html" class="btn btn-primary" id="get-started-btn" onclick="handleCTAClick(event)">Get Started</a>
+                <a href="/subscribe.html" class="btn btn-primary" id="get-started-btn" onclick="handleCTAClick(event)">Start Free Trial</a>
                 <button id="cancel-subscription-btn" class="btn" style="display: none; background: #dc3545; color: white;" onclick="cancelSubscription()">Cancel Subscription</button>
             </div>
         </nav>
@@ -665,7 +665,7 @@
             <h1>Create Stunning Presentations in Minutes</h1>
             <p>AI-powered presentation generation with detailed speaker notes. Transform your ideas into professional slides with just a few clicks.</p>
             <div class="hero-buttons">
-                <a href="/subscribe.html" class="btn btn-primary btn-large" id="hero-cta-btn" onclick="handleCTAClick(event)">Start Creating Now</a>
+                <a href="/subscribe.html" class="btn btn-primary btn-large" id="hero-cta-btn" onclick="handleCTAClick(event)">Start Free Trial</a>
                 <a href="#how-it-works" class="btn btn-secondary btn-large">See How It Works</a>
             </div>
         </div>
@@ -731,21 +731,36 @@
     <section id="pricing" class="pricing">
         <div class="pricing-content">
             <h2 class="section-title">Simple, Transparent Pricing</h2>
-            <p class="section-subtitle">Pay only for what you create - no subscription required</p>
-            <div class="pricing-card">
-                <div class="pricing-badge">PAY PER USE</div>
-                <div class="pricing-price">$0.99<span>/presentation</span></div>
-                <p style="margin-bottom: 2rem;">Perfect for professionals, students, and anyone who needs presentations</p>
-                <ul class="pricing-features">
-                    <li>AI-generated professional slides</li>
-                    <li>Detailed speaker notes for every slide</li>
-                    <li>Multiple professional themes</li>
-                    <li>Document upload support</li>
-                    <li>Flexible slide layouts</li>
-                    <li>Download as PowerPoint</li>
-                    <li>No subscription - buy only when you need</li>
-                </ul>
-                <a href="/subscribe.html" class="btn btn-primary btn-large" onclick="handleCTAClick(event)">Get Started - $0.99</a>
+            <p class="section-subtitle">Start with a 3-day free trial, then $4.99/month</p>
+            <div style="display: flex; gap: 2rem; flex-wrap: wrap; justify-content: center;">
+                <div class="pricing-card" style="flex: 1; min-width: 280px; max-width: 350px;">
+                    <div class="pricing-badge" style="background: #10b981;">FREE TRIAL</div>
+                    <div class="pricing-price">$0<span> for 3 days</span></div>
+                    <p style="margin-bottom: 2rem;">Try PresPilot risk-free</p>
+                    <ul class="pricing-features">
+                        <li>1 presentation during trial</li>
+                        <li>AI-generated professional slides</li>
+                        <li>All 20+ themes available</li>
+                        <li>View online preview</li>
+                        <li style="color: #9ca3af;">Watermarked preview</li>
+                        <li style="color: #9ca3af;">Download not included during trial</li>
+                    </ul>
+                    <a href="/subscribe.html" class="btn btn-secondary btn-large" onclick="handleCTAClick(event)">Start Free Trial</a>
+                </div>
+                <div class="pricing-card" style="flex: 1; min-width: 280px; max-width: 350px; border: 3px solid #667eea;">
+                    <div class="pricing-badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">BEST VALUE</div>
+                    <div class="pricing-price">$4.99<span>/month</span></div>
+                    <p style="margin-bottom: 2rem;">Auto-starts after trial</p>
+                    <ul class="pricing-features">
+                        <li><strong>3 presentations per month</strong></li>
+                        <li>AI-generated professional slides</li>
+                        <li>Detailed speaker notes</li>
+                        <li><strong>Download as PowerPoint</strong></li>
+                        <li><strong>No watermarks</strong></li>
+                        <li>Trial presentation unlocked!</li>
+                    </ul>
+                    <a href="/subscribe.html" class="btn btn-primary btn-large" onclick="handleCTAClick(event)">Start Free Trial</a>
+                </div>
             </div>
         </div>
     </section>
@@ -755,7 +770,7 @@
         <div class="cta-content">
             <h2>Ready to Create Amazing Presentations?</h2>
             <p>Join professionals and students who are saving hours on presentation creation</p>
-            <a href="/subscribe.html" class="btn btn-primary btn-large" onclick="handleCTAClick(event)">Create Your First Presentation - $0.99</a>
+            <a href="/subscribe.html" class="btn btn-primary btn-large" onclick="handleCTAClick(event)">Start Your 3-Day Free Trial</a>
         </div>
     </section>
 
@@ -763,7 +778,7 @@
     <footer>
         <div class="footer-content">
             <div class="footer-links">
-                <a href="/subscribe.html">Get Started</a>
+                <a href="/subscribe.html">Start Free Trial</a>
                 <a href="#features">Features</a>
                 <a href="#pricing">Pricing</a>
             </div>
@@ -887,9 +902,15 @@
 
                     console.log('User subscription status:', currentUser.subscription_status);
 
-                    // Show cancel button only for active/premium subscribers (not cancelled)
-                    if (currentUser.subscription_status === 'active' || currentUser.subscription_status === 'premium') {
-                        console.log('Showing cancel button for active/premium user');
+                    // Show cancel button only for active/premium/subscriber users (not cancelled)
+                    if (['active', 'premium', 'subscriber'].includes(currentUser.subscription_status)) {
+                        console.log('Showing cancel button for subscriber user');
+                        document.getElementById('cancel-subscription-btn').style.display = 'inline-block';
+                        document.getElementById('sign-in-btn').textContent = 'Go to App';
+                        document.getElementById('sign-in-btn').href = '/app.html';
+                        document.getElementById('get-started-btn').style.display = 'none';
+                    } else if (currentUser.subscription_status === 'trial') {
+                        // Trial users: show Go to App, show cancel button
                         document.getElementById('cancel-subscription-btn').style.display = 'inline-block';
                         document.getElementById('sign-in-btn').textContent = 'Go to App';
                         document.getElementById('sign-in-btn').href = '/app.html';
@@ -921,8 +942,8 @@
                     const data = await response.json();
                     const user = data.user;
 
-                    // Only go to app if user has active subscription
-                    if (user.subscription_status === 'active' || user.subscription_status === 'premium') {
+                    // Go to app if user has active subscription or trial
+                    if (['active', 'premium', 'subscriber', 'trial'].includes(user.subscription_status)) {
                         window.location.href = '/app.html';
                     } else {
                         // User is logged in but not subscribed - take them to subscribe page

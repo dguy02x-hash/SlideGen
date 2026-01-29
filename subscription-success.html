@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trial Activated! - PresPilot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .container {
+            background: white;
+            border-radius: 1.5rem;
+            padding: 3rem;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 40px;
+            color: white;
+        }
+
+        h1 {
+            color: #1f2937;
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .benefits {
+            background: #f3f4f6;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            text-align: left;
+        }
+
+        .benefits h3 {
+            color: #1f2937;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .benefits ul {
+            list-style: none;
+        }
+
+        .benefits li {
+            padding: 0.5rem 0;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .benefits li::before {
+            content: "✓";
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid white;
+            border-top: 3px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .note {
+            color: #9ca3af;
+            font-size: 0.875rem;
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">&#10003;</div>
+        <h1 id="success-title">Your Free Trial is Active!</h1>
+        <p class="subtitle" id="success-subtitle">Your 3-day free trial has started. Create your first presentation now!</p>
+
+        <div class="benefits">
+            <h3 id="benefits-title">Your trial includes:</h3>
+            <ul id="benefits-list">
+                <li>1 presentation during your 3-day trial</li>
+                <li>After trial: 3 presentations per month</li>
+                <li>After trial: Download without watermarks</li>
+                <li>All premium themes available</li>
+            </ul>
+        </div>
+
+        <a href="/app.html" class="btn" id="continue-btn">Start Creating Presentations</a>
+
+        <p class="note" id="success-note">After your 3-day trial, your subscription auto-starts at $4.99/month. Cancel anytime - no charge during trial.</p>
+    </div>
+
+    <script>
+        // Force HTTPS in production
+        let API_URL;
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            API_URL = 'http://localhost:5001';
+        } else {
+            API_URL = window.location.origin.replace('http://', 'https://');
+        }
+
+        // Check user status to show appropriate message
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_URL}/api/auth/me`, {
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const user = data.user;
+
+                    if (user.subscription_status === 'subscriber') {
+                        // Direct subscriber (no trial) - show subscriber message
+                        document.getElementById('success-title').textContent = 'Welcome to PresPilot Pro!';
+                        document.getElementById('success-subtitle').textContent = 'Your subscription is now active. You\'re ready to create amazing presentations!';
+                        document.getElementById('benefits-title').textContent = 'Your Pro benefits are now active:';
+                        document.getElementById('benefits-list').innerHTML = '<li>3 presentations per month</li><li>Download without watermarks</li><li>Your previous presentations are now unlocked!</li><li>All premium themes available</li>';
+                        document.getElementById('success-note').textContent = 'Your subscription will automatically renew monthly at $4.99/month. You can cancel anytime.';
+                    }
+                    // For trial users, the default messaging is already correct
+                }
+            } catch (error) {
+                // Keep default trial messaging
+            }
+        });
+
+        // Redirect to app after a short delay
+        setTimeout(() => {
+            window.location.href = '/app.html#generate';
+        }, 5000);
+    </script>
+</body>
+</html>

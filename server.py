@@ -25,6 +25,9 @@ from email_validator import validate_email, EmailNotValidError
 from twilio.rest import Client as TwilioClient
 import boto3
 from botocore.exceptions import ClientError
+import shutil
+import tempfile
+from PIL import Image, ImageDraw, ImageFont
 
 # Load environment variables from .env file (override=True to ensure .env takes precedence)
 load_dotenv(override=True)
@@ -65,7 +68,8 @@ MODEL = "claude-sonnet-4-20250514"
 
 # Stripe configuration
 stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
-STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID')  # Your $0.99 per-generation price ID from Stripe
+STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID')  # Legacy $0.99 per-generation price ID
+STRIPE_SUBSCRIPTION_PRICE_ID = os.environ.get('STRIPE_SUBSCRIPTION_PRICE_ID')  # $4.99/month subscription
 STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
 
 if not stripe.api_key:
@@ -130,6 +134,12 @@ else:
 # Use /data/slidegen.db on Render (persistent disk), or slidegen.db locally
 DB_PATH = os.environ.get('DATABASE_PATH', '/data/slidegen.db')
 
+# Presentations storage directory (for stored presentations that can be viewed/downloaded)
+PRESENTATIONS_DIR = os.environ.get('PRESENTATIONS_PATH', '/data/presentations')
+if not os.path.exists(PRESENTATIONS_DIR):
+    os.makedirs(PRESENTATIONS_DIR, exist_ok=True)
+    logger.info(f"✅ Created presentations directory: {PRESENTATIONS_DIR}")
+
 # Ensure the database directory exists
 db_dir = os.path.dirname(DB_PATH)
 if db_dir and not os.path.exists(db_dir):
@@ -140,20 +150,23 @@ def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Users table - NO FREE TIER
+    # Users table - with free tier support
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            subscription_status TEXT DEFAULT 'inactive',
+            subscription_status TEXT DEFAULT 'free',
             subscription_expires TIMESTAMP,
             generations_used INTEGER DEFAULT 0,
-            generations_limit INTEGER DEFAULT 0,
+            generations_limit INTEGER DEFAULT 1,
             last_reset TIMESTAMP,
             stripe_customer_id TEXT,
-            stripe_subscription_id TEXT
+            stripe_subscription_id TEXT,
+            free_generation_used INTEGER DEFAULT 0,
+            subscription_period_start TIMESTAMP,
+            subscription_period_end TIMESTAMP
         )
     ''')
     
@@ -218,6 +231,45 @@ def init_db():
     except sqlite3.OperationalError:
         pass  # Column already exists
 
+    # Add free_generation_used column for existing databases
+    try:
+        cursor.execute('ALTER TABLE users ADD COLUMN free_generation_used INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
+    # Add subscription period columns for existing databases
+    try:
+        cursor.execute('ALTER TABLE users ADD COLUMN subscription_period_start TIMESTAMP')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute('ALTER TABLE users ADD COLUMN subscription_period_end TIMESTAMP')
+    except sqlite3.OperationalError:
+        pass
+
+    # Add trial_end column for free trial tracking
+    try:
+        cursor.execute('ALTER TABLE users ADD COLUMN trial_end TIMESTAMP')
+    except sqlite3.OperationalError:
+        pass
+
+    # Stored presentations table - for view-only presentations and downloads
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS stored_presentations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            presentation_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            slides_json TEXT,
+            has_watermark INTEGER DEFAULT 1,
+            is_downloadable INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            FOREIGN KEY (presentation_id) REFERENCES presentations (id)
+        )
+    ''')
+
     # Password reset tokens table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS password_reset_tokens (
@@ -230,30 +282,31 @@ def init_db():
         )
     ''')
 
-    # Auto-grant premium to dev account
+    # Auto-grant subscriber status to dev account
     dev_email = 'dguy02x@gmail.com'
     dev_password_hash = hashlib.sha256('changeme123'.encode()).hexdigest()
 
     existing_user = cursor.execute('SELECT id, subscription_status FROM users WHERE email = ?', (dev_email,)).fetchone()
 
     if existing_user:
-        # Update existing user to premium
+        # Update existing user to subscriber (dev account gets unlimited-ish access)
         cursor.execute('''
             UPDATE users
-            SET subscription_status = 'premium',
-                generations_limit = 10,
+            SET subscription_status = 'subscriber',
+                generations_limit = 100,
                 generations_used = 0,
+                free_generation_used = 1,
                 last_reset = ?
             WHERE email = ?
         ''', (datetime.now().isoformat(), dev_email))
-        logger.info(f"✅ Auto-granted premium to dev account: {dev_email}")
+        logger.info(f"✅ Auto-granted subscriber status to dev account: {dev_email}")
     else:
-        # Create dev account with premium
+        # Create dev account with subscriber status
         cursor.execute('''
-            INSERT INTO users (email, password_hash, subscription_status, generations_limit, generations_used, last_reset)
-            VALUES (?, ?, 'premium', 10, 0, ?)
+            INSERT INTO users (email, password_hash, subscription_status, generations_limit, generations_used, free_generation_used, last_reset)
+            VALUES (?, ?, 'subscriber', 100, 0, 1, ?)
         ''', (dev_email, dev_password_hash, datetime.now().isoformat()))
-        logger.info(f"✅ Created premium dev account: {dev_email}")
+        logger.info(f"✅ Created subscriber dev account: {dev_email}")
 
     conn.commit()
     conn.close()
@@ -609,7 +662,7 @@ def subscription_required(f):
     return decorated_function
 
 def check_generations_limit(user_id):
-    """Check if user has generations available (pay-per-generation model)"""
+    """Check if user has generations available (free tier or subscription model)"""
     conn = get_db()
     cursor = conn.cursor()
 
@@ -617,24 +670,251 @@ def check_generations_limit(user_id):
     conn.close()
 
     if not user:
-        return False
+        return False, None, "User not found"
 
-    # Check if user has generations remaining (bought credits)
-    # User must have active status and available credits
-    if user['subscription_status'] not in ['premium', 'active', 'cancelled']:
-        return False
+    subscription_status = user['subscription_status']
 
-    return user['generations_used'] < user['generations_limit']
+    # Subscribers get 3 generations per month
+    if subscription_status == 'subscriber':
+        if user['generations_used'] < user['generations_limit']:
+            return True, 'subscriber', None
+        else:
+            return False, 'subscriber', 'Monthly limit reached (3 presentations). Your limit resets on your billing date.'
+
+    # Trial users get 1 generation (same as free)
+    elif subscription_status == 'trial':
+        if user['free_generation_used'] == 0:
+            return True, 'trial', None
+        else:
+            return False, 'trial', 'Trial generation used. Your subscription starts soon with 3 presentations per month.'
+
+    # Free users get 1 lifetime generation
+    elif subscription_status == 'free':
+        if user['free_generation_used'] == 0:
+            return True, 'free', None
+        else:
+            return False, 'free', 'Free generation already used. Start your free trial to create more presentations.'
+
+    # Legacy statuses (premium, active, cancelled) - treat as having credits
+    elif subscription_status in ['premium', 'active', 'cancelled']:
+        if user['generations_used'] < user['generations_limit']:
+            return True, subscription_status, None
+        else:
+            return False, subscription_status, 'No generation credits remaining.'
+
+    # Inactive users
+    else:
+        return False, 'inactive', 'Please sign up or subscribe to generate presentations.'
 
 def increment_generation_count(user_id):
-    """Increment user's generation count"""
+    """Increment user's generation count (for subscribers)"""
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute('''
-        UPDATE users 
-        SET generations_used = generations_used + 1 
+        UPDATE users
+        SET generations_used = generations_used + 1
         WHERE id = ?
     ''', (user_id,))
+    conn.commit()
+    conn.close()
+
+def mark_free_generation_used(user_id):
+    """Mark the user's free generation as used"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE users
+        SET free_generation_used = 1
+        WHERE id = ?
+    ''', (user_id,))
+    conn.commit()
+    conn.close()
+
+def add_watermark_to_image(image_path, output_path, text="PresPilot - Subscribe to Download"):
+    """Add diagonal watermark text across slide image"""
+    try:
+        image = Image.open(image_path).convert('RGBA')
+
+        # Create a transparent overlay for watermark
+        watermark_layer = Image.new('RGBA', image.size, (255, 255, 255, 0))
+        draw = ImageDraw.Draw(watermark_layer)
+
+        # Calculate font size based on image dimensions
+        font_size = int(min(image.width, image.height) / 20)
+        try:
+            # Try to use a system font
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
+        except:
+            try:
+                font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", font_size)
+            except:
+                font = ImageFont.load_default()
+
+        # Draw watermark diagonally across the image
+        for x_offset in range(-300, image.width + 300, 400):
+            for y_offset in range(-100, image.height + 100, 200):
+                draw.text(
+                    (x_offset, y_offset),
+                    text,
+                    font=font,
+                    fill=(128, 128, 128, 80)  # Gray, semi-transparent
+                )
+
+        # Composite the watermark onto the original image
+        watermarked = Image.alpha_composite(image, watermark_layer)
+        watermarked = watermarked.convert('RGB')
+        watermarked.save(output_path, 'PNG')
+
+        return True
+    except Exception as e:
+        logger.error(f"Failed to add watermark: {str(e)}")
+        return False
+
+def store_presentation(user_id, presentation_id, pptx_path, title, is_subscriber):
+    """Store presentation files and generate slide images"""
+    try:
+        # Create storage directory
+        user_dir = os.path.join(PRESENTATIONS_DIR, str(user_id), str(presentation_id))
+        os.makedirs(user_dir, exist_ok=True)
+        slides_dir = os.path.join(user_dir, 'slides')
+        os.makedirs(slides_dir, exist_ok=True)
+
+        # Copy the clean PPTX file
+        clean_path = os.path.join(user_dir, 'presentation.pptx')
+        shutil.copy(pptx_path, clean_path)
+
+        # Generate slide images (try using LibreOffice conversion)
+        slide_paths = generate_slide_images(pptx_path, slides_dir, add_watermark=not is_subscriber)
+
+        # Store in database
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO stored_presentations
+            (user_id, presentation_id, title, file_path, slides_json, has_watermark, is_downloadable)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            user_id,
+            presentation_id,
+            title,
+            clean_path,
+            json.dumps(slide_paths),
+            0 if is_subscriber else 1,
+            1 if is_subscriber else 0
+        ))
+        conn.commit()
+        conn.close()
+
+        return {
+            'clean_path': clean_path,
+            'slides_dir': slides_dir,
+            'slide_paths': slide_paths,
+            'has_watermark': not is_subscriber,
+            'is_downloadable': is_subscriber
+        }
+    except Exception as e:
+        logger.error(f"Failed to store presentation: {str(e)}")
+        return None
+
+def generate_slide_images(pptx_path, output_dir, add_watermark=False):
+    """Generate PNG images from PPTX slides using LibreOffice conversion"""
+    slide_paths = []
+
+    try:
+        import subprocess
+
+        # Convert PPTX to PDF using LibreOffice
+        pdf_dir = tempfile.mkdtemp()
+        subprocess.run([
+            'libreoffice', '--headless', '--convert-to', 'pdf',
+            '--outdir', pdf_dir, pptx_path
+        ], check=True, capture_output=True, timeout=120)
+
+        # Find the generated PDF
+        pdf_filename = os.path.splitext(os.path.basename(pptx_path))[0] + '.pdf'
+        pdf_path = os.path.join(pdf_dir, pdf_filename)
+
+        if os.path.exists(pdf_path):
+            # Convert PDF pages to images
+            from pdf2image import convert_from_path
+            images = convert_from_path(pdf_path, dpi=150)
+
+            for i, image in enumerate(images):
+                slide_filename = f'slide_{i+1:03d}.png'
+                slide_path = os.path.join(output_dir, slide_filename)
+
+                # Save the image first
+                image.save(slide_path, 'PNG')
+
+                # Apply watermark if needed
+                if add_watermark:
+                    watermarked_path = slide_path  # Overwrite with watermarked version
+                    add_watermark_to_image(slide_path, watermarked_path)
+
+                slide_paths.append(slide_filename)
+
+            # Cleanup PDF
+            os.remove(pdf_path)
+
+        # Cleanup temp directory
+        shutil.rmtree(pdf_dir, ignore_errors=True)
+
+    except Exception as e:
+        logger.warning(f"LibreOffice conversion failed, creating placeholder: {str(e)}")
+        # Create a placeholder image if conversion fails
+        placeholder = Image.new('RGB', (1280, 720), color=(240, 240, 240))
+        draw = ImageDraw.Draw(placeholder)
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32)
+        except:
+            font = ImageFont.load_default()
+        draw.text((400, 340), "Preview not available", fill=(100, 100, 100), font=font)
+        draw.text((350, 380), "Download to view full presentation", fill=(100, 100, 100), font=font)
+
+        if add_watermark:
+            draw.text((400, 420), "Subscribe to download", fill=(128, 128, 128), font=font)
+
+        slide_filename = 'slide_001.png'
+        slide_path = os.path.join(output_dir, slide_filename)
+        placeholder.save(slide_path, 'PNG')
+        slide_paths.append(slide_filename)
+
+    return slide_paths
+
+def get_stored_presentation(presentation_id, user_id):
+    """Retrieve stored presentation info"""
+    conn = get_db()
+    cursor = conn.cursor()
+    result = cursor.execute('''
+        SELECT * FROM stored_presentations
+        WHERE presentation_id = ? AND user_id = ?
+    ''', (presentation_id, user_id)).fetchone()
+    conn.close()
+    return result
+
+def unlock_user_presentations(user_id):
+    """Unlock all user's presentations when they subscribe (remove watermarks, enable downloads)"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Get all watermarked presentations for this user
+    presentations = cursor.execute('''
+        SELECT * FROM stored_presentations WHERE user_id = ? AND has_watermark = 1
+    ''', (user_id,)).fetchall()
+
+    for pres in presentations:
+        # Regenerate slide images without watermarks
+        slides_dir = os.path.join(PRESENTATIONS_DIR, str(user_id), str(pres['presentation_id']), 'slides')
+        if os.path.exists(pres['file_path']):
+            generate_slide_images(pres['file_path'], slides_dir, add_watermark=False)
+
+    # Update database to mark all as downloadable and no watermark
+    cursor.execute('''
+        UPDATE stored_presentations
+        SET has_watermark = 0, is_downloadable = 1
+        WHERE user_id = ?
+    ''', (user_id,))
+
     conn.commit()
     conn.close()
 
@@ -883,11 +1163,11 @@ def signup():
             conn.close()
             return jsonify({'error': 'Email already registered'}), 400
 
-        # Create user with 0 generations - must pay $0.99 per presentation
+        # Create user with free tier - 1 free generation available
         password_hash = generate_password_hash(password)
         cursor.execute('''
-            INSERT INTO users (email, password_hash, subscription_status, generations_limit, generations_used, created_at)
-            VALUES (?, ?, 'inactive', 0, 0, ?)
+            INSERT INTO users (email, password_hash, subscription_status, generations_limit, generations_used, free_generation_used, created_at)
+            VALUES (?, ?, 'free', 1, 0, 0, ?)
         ''', (email, password_hash, datetime.now().isoformat()))
 
         user_id = cursor.lastrowid
@@ -898,12 +1178,20 @@ def signup():
         session['user_id'] = user_id
         session['email'] = email
 
-        logger.info(f"New user registered: {email} - Pay-per-generation model")
+        logger.info(f"New user registered: {email} - Free tier with 1 generation")
         return jsonify({
             'success': True,
-            'message': 'Account created! Pay $0.99 to generate your first presentation.',
-            'payment_required': True,
-            'user': {'id': user_id, 'email': email}
+            'message': 'Account created! Starting your free trial.',
+            'has_free_generation': True,
+            'user': {
+                'id': user_id,
+                'email': email,
+                'subscription_status': 'free',
+                'generations_used': 0,
+                'generations_limit': 1,
+                'free_generation_used': 0,
+                'trial_end': None
+            }
         })
     
     except Exception as e:
@@ -941,7 +1229,9 @@ def login():
                 'email': user['email'],
                 'subscription_status': user['subscription_status'],
                 'generations_used': user['generations_used'],
-                'generations_limit': user['generations_limit']
+                'generations_limit': user['generations_limit'],
+                'free_generation_used': user['free_generation_used'] if user['free_generation_used'] else 0,
+                'trial_end': user['trial_end']
             }
         })
     
@@ -978,7 +1268,10 @@ def auth_status():
                 'email': user['email'],
                 'subscription_status': user['subscription_status'],
                 'generations_used': user['generations_used'],
-                'generations_limit': user['generations_limit']
+                'generations_limit': user['generations_limit'],
+                'free_generation_used': user['free_generation_used'] if user['free_generation_used'] else 0,
+                'subscription_period_end': user['subscription_period_end'],
+                'trial_end': user['trial_end']
             }
         })
     except Exception as e:
@@ -1739,10 +2032,11 @@ def list_themes():
 
 @app.route('/api/payment/config', methods=['GET'])
 def payment_config():
-    """Get Stripe publishable key"""
+    """Get Stripe publishable key and price IDs"""
     return jsonify({
         'publishableKey': STRIPE_PUBLISHABLE_KEY,
-        'priceId': STRIPE_PRICE_ID
+        'priceId': STRIPE_PRICE_ID,
+        'subscriptionPriceId': STRIPE_SUBSCRIPTION_PRICE_ID
     })
 
 @app.route('/api/payment/create-checkout-session', methods=['POST'])
@@ -1786,6 +2080,81 @@ def create_checkout_session():
 
     except Exception as e:
         logger.error(f"Checkout session error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/payment/create-subscription', methods=['POST'])
+@login_required
+def create_subscription():
+    """Create Stripe subscription checkout session ($4.99/month)"""
+    try:
+        user_id = session.get('user_id')
+
+        # Get user email
+        conn = get_db()
+        cursor = conn.cursor()
+        user = cursor.execute('SELECT email, stripe_customer_id FROM users WHERE id = ?', (user_id,)).fetchone()
+        conn.close()
+
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        # Check if subscription price ID is configured
+        if not STRIPE_SUBSCRIPTION_PRICE_ID:
+            logger.error("STRIPE_SUBSCRIPTION_PRICE_ID not configured")
+            return jsonify({'error': 'Subscription not configured'}), 500
+
+        # Determine if user qualifies for a free trial
+        # Skip trial for users who already used their free generation, cancelled users, or existing subscribers
+        conn2 = get_db()
+        cursor2 = conn2.cursor()
+        full_user = cursor2.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+        conn2.close()
+
+        offer_trial = True
+        if full_user:
+            status = full_user['subscription_status']
+            free_used = full_user['free_generation_used'] or 0
+            # No trial for: existing subscribers, cancelled users, users who already used free gen
+            if status in ('subscriber', 'cancelled', 'active', 'premium') or free_used == 1:
+                offer_trial = False
+
+        # Create subscription checkout session
+        checkout_params = {
+            'payment_method_types': ['card'],
+            'line_items': [{
+                'price': STRIPE_SUBSCRIPTION_PRICE_ID,
+                'quantity': 1,
+            }],
+            'mode': 'subscription',
+            'success_url': request.host_url + 'subscription-success?session_id={CHECKOUT_SESSION_ID}',
+            'cancel_url': request.host_url + 'app.html',
+            'customer_email': user['email'],
+            'allow_promotion_codes': True,
+            'metadata': {
+                'user_id': str(user_id)
+            },
+            'subscription_data': {
+                'metadata': {
+                    'user_id': str(user_id)
+                }
+            }
+        }
+
+        # Add 3-day free trial for eligible users
+        if offer_trial:
+            checkout_params['subscription_data']['trial_period_days'] = 3
+
+        # If user already has a Stripe customer ID, use it
+        if user['stripe_customer_id']:
+            checkout_params['customer'] = user['stripe_customer_id']
+            del checkout_params['customer_email']  # Can't use both
+
+        checkout_session = stripe.checkout.Session.create(**checkout_params)
+
+        return jsonify({'url': checkout_session.url, 'sessionId': checkout_session.id})
+
+    except Exception as e:
+        logger.error(f"Subscription checkout error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/payment/session-info', methods=['GET'])
@@ -1934,13 +2303,15 @@ def stripe_webhook():
             return jsonify({'error': 'Invalid signature'}), 400
         raise
 
-    # Handle one-time payment events
+    # Handle checkout session completed (both one-time payments and subscriptions)
     if event['type'] == 'checkout.session.completed':
         session_obj = event['data']['object']
         session_id = session_obj['id']
+        session_mode = session_obj.get('mode')  # 'payment' or 'subscription'
         customer_email = session_obj.get('customer_details', {}).get('email')
         stripe_customer_id = session_obj.get('customer')
         payment_intent_id = session_obj.get('payment_intent')
+        subscription_id = session_obj.get('subscription')
         metadata = session_obj.get('metadata', {})
         user_id_from_metadata = metadata.get('user_id')
 
@@ -1961,8 +2332,65 @@ def stripe_webhook():
                     (customer_email.lower(),)
                 ).fetchone()
 
-            if existing_user:
-                # User exists - grant them 1 generation credit
+            if session_mode == 'subscription' and existing_user:
+                # Get subscription details from Stripe
+                stripe_subscription = stripe.Subscription.retrieve(subscription_id)
+                sub_status = stripe_subscription.get('status', '')
+                period_start = datetime.fromtimestamp(stripe_subscription.current_period_start)
+                period_end = datetime.fromtimestamp(stripe_subscription.current_period_end)
+
+                if sub_status == 'trialing':
+                    # TRIAL - Set user to trial status with 1 generation
+                    trial_end_ts = stripe_subscription.get('trial_end')
+                    trial_end = datetime.fromtimestamp(trial_end_ts) if trial_end_ts else period_end
+
+                    cursor.execute('''
+                        UPDATE users
+                        SET subscription_status = 'trial',
+                            generations_limit = 1,
+                            generations_used = 0,
+                            stripe_customer_id = ?,
+                            stripe_subscription_id = ?,
+                            subscription_period_start = ?,
+                            subscription_period_end = ?,
+                            trial_end = ?
+                        WHERE id = ?
+                    ''', (stripe_customer_id, subscription_id, period_start.isoformat(),
+                          period_end.isoformat(), trial_end.isoformat(), existing_user['id']))
+
+                    conn.commit()
+                    logger.info(f"✅ Trial activated for {existing_user['email']} - 1 trial generation, trial ends {trial_end.isoformat()}")
+                else:
+                    # DIRECT SUBSCRIPTION (no trial) - Activate subscriber status
+                    cursor.execute('''
+                        UPDATE users
+                        SET subscription_status = 'subscriber',
+                            generations_limit = 3,
+                            generations_used = 0,
+                            stripe_customer_id = ?,
+                            stripe_subscription_id = ?,
+                            subscription_period_start = ?,
+                            subscription_period_end = ?,
+                            trial_end = NULL
+                        WHERE id = ?
+                    ''', (stripe_customer_id, subscription_id, period_start.isoformat(),
+                          period_end.isoformat(), existing_user['id']))
+
+                    # Unlock all existing presentations (remove watermarks, enable downloads)
+                    unlock_user_presentations(existing_user['id'])
+
+                    conn.commit()
+                    logger.info(f"✅ Subscription activated for {existing_user['email']} - 3 generations/month")
+
+                # Record the payment
+                cursor.execute('''
+                    INSERT INTO payment_history (user_id, stripe_payment_id, amount, status)
+                    VALUES (?, ?, 4.99, 'succeeded')
+                ''', (existing_user['id'], subscription_id))
+                conn.commit()
+
+            elif session_mode == 'payment' and existing_user:
+                # LEGACY ONE-TIME PAYMENT - Add 1 generation credit
                 cursor.execute('''
                     UPDATE users
                     SET subscription_status = 'active',
@@ -1971,7 +2399,6 @@ def stripe_webhook():
                     WHERE id = ?
                 ''', (stripe_customer_id, existing_user['id']))
 
-                # Record the payment
                 cursor.execute('''
                     INSERT INTO payment_history (user_id, stripe_payment_id, amount, status)
                     VALUES (?, ?, 0.99, 'succeeded')
@@ -1981,7 +2408,6 @@ def stripe_webhook():
                 logger.info(f"✅ Payment received for {existing_user['email']} - Added 1 generation credit")
             else:
                 # New user - account will be created when they set password on payment-success page
-                # Store pending payment info to be processed when account is created
                 logger.info(f"✅ New payment for {customer_email} - account will be created on payment-success page")
         except Exception as e:
             logger.error(f"Error handling checkout session: {str(e)}")
@@ -1993,46 +2419,90 @@ def stripe_webhook():
         payment_intent = event['data']['object']
         logger.info(f"✅ Payment intent succeeded: {payment_intent['id']}")
 
-    # Keep subscription handlers for backwards compatibility with existing subscribers
     elif event['type'] == 'invoice.payment_succeeded':
+        # Handle subscription payments (trial conversion + renewals)
         invoice = event['data']['object']
         subscription_id = invoice.get('subscription')
+        billing_reason = invoice.get('billing_reason')
 
         if subscription_id:
-            # Legacy: Record subscription payment
             conn = get_db()
             cursor = conn.cursor()
             user = cursor.execute(
-                'SELECT id FROM users WHERE stripe_subscription_id = ?',
+                'SELECT id, email, subscription_status FROM users WHERE stripe_subscription_id = ?',
                 (subscription_id,)
             ).fetchone()
 
             if user:
+                # Get updated subscription period from Stripe
+                stripe_subscription = stripe.Subscription.retrieve(subscription_id)
+                period_start = datetime.fromtimestamp(stripe_subscription.current_period_start)
+                period_end = datetime.fromtimestamp(stripe_subscription.current_period_end)
+
+                if billing_reason == 'subscription_create':
+                    # First real charge after trial ends - upgrade to subscriber
+                    cursor.execute('''
+                        UPDATE users
+                        SET subscription_status = 'subscriber',
+                            generations_limit = 3,
+                            generations_used = 0,
+                            trial_end = NULL,
+                            subscription_period_start = ?,
+                            subscription_period_end = ?
+                        WHERE id = ?
+                    ''', (period_start.isoformat(), period_end.isoformat(), user['id']))
+
+                    # Unlock all existing presentations (remove watermarks, enable downloads)
+                    unlock_user_presentations(user['id'])
+
+                    logger.info(f"✅ Trial converted to subscriber for {user['email']} - 3 generations/month")
+
+                elif billing_reason == 'subscription_cycle':
+                    # Monthly renewal - reset generation count
+                    cursor.execute('''
+                        UPDATE users
+                        SET generations_used = 0,
+                            generations_limit = 3,
+                            subscription_period_start = ?,
+                            subscription_period_end = ?
+                        WHERE id = ?
+                    ''', (period_start.isoformat(), period_end.isoformat(), user['id']))
+                    logger.info(f"✅ Monthly generation count reset for {user['email']}")
+
+                # Record the payment
                 cursor.execute('''
                     INSERT INTO payment_history (user_id, stripe_payment_id, amount, status)
                     VALUES (?, ?, ?, ?)
                 ''', (user['id'], invoice['id'], invoice['amount_paid'] / 100, 'succeeded'))
                 conn.commit()
-                logger.info(f"✅ Legacy subscription payment for user {user['id']}")
 
             conn.close()
 
+    elif event['type'] == 'invoice.payment_failed':
+        # Handle failed payment (Stripe auto-retries; after all retries fail, subscription.deleted fires)
+        invoice = event['data']['object']
+        subscription_id = invoice.get('subscription')
+        customer_email = invoice.get('customer_email', 'unknown')
+        logger.warning(f"⚠️ Invoice payment failed for {customer_email} (subscription: {subscription_id}). Stripe will retry.")
+
     elif event['type'] == 'customer.subscription.deleted':
-        # Legacy: Handle subscription cancellation for existing subscribers
+        # Handle subscription cancellation (including trial expiry without payment)
         subscription = event['data']['object']
 
         conn = get_db()
         cursor = conn.cursor()
         cursor.execute('''
             UPDATE users
-            SET subscription_status = 'inactive',
-                stripe_subscription_id = NULL
+            SET subscription_status = 'free',
+                stripe_subscription_id = NULL,
+                generations_limit = 1,
+                trial_end = NULL
             WHERE stripe_subscription_id = ?
         ''', (subscription['id'],))
         conn.commit()
         conn.close()
-        
-        logger.info(f"Subscription {subscription['id']} cancelled - user now inactive")
+
+        logger.info(f"Subscription {subscription['id']} cancelled - user reverted to free")
     
     return jsonify({'success': True})
 
@@ -2653,6 +3123,124 @@ Speaker notes:"""
         logger.error(f"Notes generation error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+# ==================== PRESENTATION VIEWER ENDPOINTS ====================
+
+@app.route('/api/presentations/<int:presentation_id>/info', methods=['GET'])
+@login_required
+def get_presentation_info(presentation_id):
+    """Get presentation info for viewer"""
+    user_id = session.get('user_id')
+
+    stored = get_stored_presentation(presentation_id, user_id)
+    if not stored:
+        return jsonify({'error': 'Presentation not found'}), 404
+
+    # Get user subscription status
+    conn = get_db()
+    cursor = conn.cursor()
+    user = cursor.execute('SELECT subscription_status FROM users WHERE id = ?', (user_id,)).fetchone()
+    conn.close()
+
+    slide_paths = json.loads(stored['slides_json']) if stored['slides_json'] else []
+
+    return jsonify({
+        'id': stored['id'],
+        'presentation_id': stored['presentation_id'],
+        'title': stored['title'],
+        'has_watermark': bool(stored['has_watermark']),
+        'is_downloadable': bool(stored['is_downloadable']),
+        'slides': slide_paths,
+        'slide_count': len(slide_paths),
+        'subscription_status': user['subscription_status'] if user else 'free',
+        'created_at': stored['created_at']
+    })
+
+@app.route('/api/presentations/<int:presentation_id>/slide/<int:slide_num>', methods=['GET'])
+@login_required
+def get_slide_image(presentation_id, slide_num):
+    """Serve individual slide image"""
+    user_id = session.get('user_id')
+
+    stored = get_stored_presentation(presentation_id, user_id)
+    if not stored:
+        return jsonify({'error': 'Presentation not found'}), 404
+
+    slides_dir = os.path.join(PRESENTATIONS_DIR, str(user_id), str(presentation_id), 'slides')
+    slide_filename = f'slide_{slide_num:03d}.png'
+    slide_path = os.path.join(slides_dir, slide_filename)
+
+    if not os.path.exists(slide_path):
+        return jsonify({'error': 'Slide not found'}), 404
+
+    return send_from_directory(slides_dir, slide_filename, mimetype='image/png')
+
+@app.route('/api/presentations/<int:presentation_id>/download', methods=['GET'])
+@login_required
+def download_stored_presentation(presentation_id):
+    """Download the stored PPTX file (subscribers only)"""
+    from flask import send_file
+
+    user_id = session.get('user_id')
+
+    stored = get_stored_presentation(presentation_id, user_id)
+    if not stored:
+        return jsonify({'error': 'Presentation not found'}), 404
+
+    # Check if user can download
+    if not stored['is_downloadable']:
+        return jsonify({
+            'error': 'Subscribe to download this presentation',
+            'subscription_required': True,
+            'message': 'Subscribe for $4.99/month to download your presentations without watermarks.'
+        }), 403
+
+    if not os.path.exists(stored['file_path']):
+        return jsonify({'error': 'Presentation file not found'}), 404
+
+    return send_file(
+        stored['file_path'],
+        mimetype='application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        as_attachment=True,
+        download_name=f"{stored['title'].replace(' ', '_')}.pptx"
+    )
+
+@app.route('/api/presentations/my-presentations', methods=['GET'])
+@login_required
+def get_my_presentations():
+    """Get list of user's stored presentations"""
+    user_id = session.get('user_id')
+
+    conn = get_db()
+    cursor = conn.cursor()
+    presentations = cursor.execute('''
+        SELECT sp.*, p.topic, p.num_slides, p.theme
+        FROM stored_presentations sp
+        JOIN presentations p ON sp.presentation_id = p.id
+        WHERE sp.user_id = ?
+        ORDER BY sp.created_at DESC
+    ''', (user_id,)).fetchall()
+    conn.close()
+
+    result = []
+    for pres in presentations:
+        slide_paths = json.loads(pres['slides_json']) if pres['slides_json'] else []
+        result.append({
+            'id': pres['id'],
+            'presentation_id': pres['presentation_id'],
+            'title': pres['title'],
+            'topic': pres['topic'],
+            'theme': pres['theme'],
+            'num_slides': pres['num_slides'],
+            'has_watermark': bool(pres['has_watermark']),
+            'is_downloadable': bool(pres['is_downloadable']),
+            'slide_count': len(slide_paths),
+            'created_at': pres['created_at']
+        })
+
+    return jsonify({'presentations': result})
+
+# ==================== END VIEWER ENDPOINTS ====================
+
 @app.route('/api/presentations/complete', methods=['POST'])
 def complete_presentation():
     """Mark presentation as complete - generation count will be incremented on successful download"""
@@ -2696,26 +3284,33 @@ def generate_pptx():
     try:
         from pptx_generator import generate_presentation
         from flask import send_file
-        import tempfile
 
-        # Check generations limit BEFORE generating (pay-per-generation model)
+        # Check generations limit BEFORE generating
         user_id = session.get('user_id', 'anonymous')
+        is_subscriber = False
+        subscription_status = 'free'
 
         if user_id != 'anonymous':
-            # Check if user has generations remaining (purchased credits)
-            if not check_generations_limit(user_id):
+            # Check if user has generations remaining
+            can_generate, subscription_status, error_message = check_generations_limit(user_id)
+
+            if not can_generate:
                 conn = get_db()
                 cursor = conn.cursor()
                 user = cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
                 conn.close()
 
                 return jsonify({
-                    'error': 'No generation credits remaining. Purchase more to continue.',
+                    'error': error_message,
                     'payment_required': True,
-                    'subscription_status': user['subscription_status'],
-                    'generations_used': user['generations_used'],
-                    'generations_limit': user['generations_limit']
+                    'subscription_required': subscription_status == 'free',
+                    'subscription_status': subscription_status,
+                    'generations_used': user['generations_used'] if user else 0,
+                    'generations_limit': user['generations_limit'] if user else 0,
+                    'free_generation_used': user['free_generation_used'] if user else 0
                 }), 403
+
+            is_subscriber = subscription_status == 'subscriber'
 
         data = request.json
         title = data.get('title', 'Presentation')
@@ -2825,12 +3420,52 @@ Speaker notes:"""
                 filename=tmp.name
             )
 
-            # Increment generation count ONLY after successful generation
-            if user_id != 'anonymous':
-                increment_generation_count(user_id)
-                logger.info(f"User {user_id} successfully generated presentation: {title}")
+            # Save presentation record first
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO presentations (user_id, title, topic, num_slides, theme)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (user_id, title, topic, len(sections), theme))
+            presentation_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
 
-            # Send file
+            # Store the presentation for later viewing/download
+            if user_id != 'anonymous':
+                stored = store_presentation(
+                    user_id=user_id,
+                    presentation_id=presentation_id,
+                    pptx_path=filename,
+                    title=title,
+                    is_subscriber=is_subscriber
+                )
+
+                # Update generation count based on user type
+                if subscription_status in ('free', 'trial'):
+                    mark_free_generation_used(user_id)
+                    logger.info(f"{subscription_status.capitalize()} user {user_id} used their free generation: {title}")
+                elif subscription_status == 'subscriber':
+                    increment_generation_count(user_id)
+                    logger.info(f"Subscriber {user_id} generated presentation: {title}")
+                else:
+                    # Legacy status (premium, active, cancelled) - use credit system
+                    increment_generation_count(user_id)
+                    logger.info(f"User {user_id} (legacy status) generated presentation: {title}")
+
+                # For free/trial users, return viewer URL instead of file download
+                if subscription_status in ('free', 'trial'):
+                    return jsonify({
+                        'success': True,
+                        'is_preview': True,
+                        'presentation_id': presentation_id,
+                        'viewer_url': f'/view/{presentation_id}',
+                        'message': 'Your presentation has been created! View your preview below. Subscribe to download without watermarks.',
+                        'has_watermark': True,
+                        'is_downloadable': False
+                    })
+
+            # For subscribers and legacy users, send file directly
             return send_file(
                 filename,
                 mimetype='application/vnd.openxmlformats-officedocument.presentationml.presentation',
@@ -2867,6 +3502,11 @@ def payment_success():
     """Serve payment success page"""
     return send_from_directory('.', 'payment-success.html')
 
+@app.route('/subscription-success')
+def subscription_success():
+    """Serve subscription success page - redirects to app"""
+    return send_from_directory('.', 'subscription-success.html')
+
 @app.route('/payment-cancelled')
 def payment_cancelled():
     """Serve payment cancelled page"""
@@ -2886,6 +3526,12 @@ def confirm_email_page():
 def create_account_page():
     """Serve account creation page"""
     return send_from_directory('.', 'create-account.html')
+
+@app.route('/view/<int:presentation_id>')
+def view_presentation_page(presentation_id):
+    """Serve the presentation viewer page (redirects to app.html with viewer mode)"""
+    # The viewer will be handled in app.html with a query parameter
+    return send_from_directory('.', 'app.html')
 
 @app.route('/landing.html')
 def landing_page():

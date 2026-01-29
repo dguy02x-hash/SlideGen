@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Get Started with PresPilot - $0.99/presentation</title>
+    <title>PresPilot Pricing - Start Your Free Trial</title>
     <style>
         * {
             margin: 0;
@@ -20,7 +20,7 @@
         }
 
         .container {
-            max-width: 900px;
+            max-width: 1000px;
             margin: 0 auto;
         }
 
@@ -40,48 +40,68 @@
             opacity: 0.9;
         }
 
-        .pricing-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 2rem;
-            padding: 3rem;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-            max-width: 600px;
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+            max-width: 800px;
             margin: 0 auto;
         }
 
-        .price-header {
-            text-align: center;
-            padding-bottom: 2rem;
-            border-bottom: 2px solid rgba(251, 191, 36, 0.3);
-            margin-bottom: 2rem;
+        .pricing-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pricing-card.featured {
+            border: 3px solid #667eea;
+            transform: scale(1.02);
+        }
+
+        .featured-badge {
+            position: absolute;
+            top: 20px;
+            right: -35px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 5px 40px;
+            font-size: 12px;
+            font-weight: bold;
+            transform: rotate(45deg);
+        }
+
+        .plan-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #1f2937;
+        }
+
+        .plan-subtitle {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-bottom: 1.5rem;
         }
 
         .price {
-            font-size: 4rem;
+            font-size: 3rem;
             font-weight: bold;
             color: #1f2937;
         }
 
         .price-period {
-            font-size: 1.25rem;
+            font-size: 1rem;
             color: #6b7280;
-        }
-
-        .plan-name {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
+            font-weight: normal;
         }
 
         .features {
             margin: 2rem 0;
-        }
-
-        .features h3 {
-            font-size: 1.25rem;
-            margin-bottom: 1.5rem;
-            text-align: center;
         }
 
         .features ul {
@@ -89,11 +109,11 @@
         }
 
         .features li {
-            padding: 1rem 0;
+            padding: 0.75rem 0;
             display: flex;
             align-items: flex-start;
-            gap: 1rem;
-            font-size: 1.125rem;
+            gap: 0.75rem;
+            font-size: 1rem;
             border-bottom: 1px solid rgba(0,0,0,0.05);
         }
 
@@ -101,47 +121,63 @@
             border-bottom: none;
         }
 
-        .features li::before {
-            content: "✓";
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #059669;
+        .features li .icon {
+            font-size: 1.25rem;
             flex-shrink: 0;
+        }
+
+        .features li .icon.check {
+            color: #059669;
+        }
+
+        .features li .icon.x {
+            color: #dc2626;
+        }
+
+        .features li .icon.star {
+            color: #f59e0b;
+        }
+
+        .features li.disabled {
+            color: #9ca3af;
         }
 
         .btn {
             width: 100%;
-            padding: 1.25rem;
-            background: #1f2937;
-            color: #fbbf24;
+            padding: 1rem;
             border: none;
-            border-radius: 1rem;
+            border-radius: 0.75rem;
             font-weight: 600;
-            font-size: 1.25rem;
+            font-size: 1.1rem;
             cursor: pointer;
             transition: all 0.3s;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            margin-top: 2rem;
+            margin-top: 1rem;
         }
 
-        .btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #1f2937;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
         }
 
         .btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
-        }
-
-        .guarantee {
-            text-align: center;
-            margin-top: 2rem;
-            padding-top: 2rem;
-            border-top: 2px solid rgba(251, 191, 36, 0.3);
-            font-size: 0.95rem;
-            color: #6b7280;
         }
 
         .back-link {
@@ -163,18 +199,37 @@
 
         .loading {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #fbbf24;
-            border-top: 3px solid transparent;
+            width: 18px;
+            height: 18px;
+            border: 2px solid white;
+            border-top: 2px solid transparent;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-left: 10px;
+            margin-left: 8px;
+            vertical-align: middle;
         }
 
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        .comparison-note {
+            text-align: center;
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(255,255,255,0.5);
+            border-radius: 1rem;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 700px) {
+            .pricing-card.featured {
+                transform: none;
+            }
+            .header h1 {
+                font-size: 2rem;
+            }
         }
     </style>
 </head>
@@ -182,52 +237,69 @@
     <div class="container">
         <div class="header">
             <h1>PresPilot</h1>
-            <p>Start creating professional presentations powered by AI</p>
+            <p>Create professional AI-powered presentations in minutes</p>
         </div>
 
-        <div class="pricing-card">
-            <div class="price-header">
-                <div class="plan-name">Pay Per Presentation</div>
-                <div class="price">$0.99<span class="price-period">/presentation</span></div>
-                <p style="font-size: 14px; color: #6b7280; margin-top: 10px;">No subscription required</p>
+        <div class="pricing-grid">
+            <!-- Free Trial Tier -->
+            <div class="pricing-card">
+                <div class="plan-name">3-Day Free Trial</div>
+                <div class="plan-subtitle">Try PresPilot risk-free</div>
+                <div class="price">$0<span class="price-period"> for 3 days</span></div>
+
+                <div class="features">
+                    <ul>
+                        <li><span class="icon check">&#10003;</span> 1 presentation during trial</li>
+                        <li><span class="icon check">&#10003;</span> AI-generated professional slides</li>
+                        <li><span class="icon check">&#10003;</span> All 20+ themes available</li>
+                        <li><span class="icon check">&#10003;</span> View online with preview</li>
+                        <li class="disabled"><span class="icon x">&#10005;</span> Download not included during trial</li>
+                        <li class="disabled"><span class="icon x">&#10005;</span> Watermarked preview</li>
+                    </ul>
+                </div>
+
+                <button id="subscribe-btn-trial" class="btn btn-secondary" onclick="document.getElementById('subscribe-btn').click()">Start Free Trial</button>
             </div>
 
-            <div class="features">
-                <h3>Everything you need to create amazing presentations</h3>
-                <ul>
-                    <li>AI-generated professional slides</li>
-                    <li>Detailed speaker notes for every slide</li>
-                    <li>10 professional themes to choose from</li>
-                    <li>Upload documents for context-aware slides</li>
-                    <li>Export to PowerPoint (.pptx) format</li>
-                    <li>Priority customer support</li>
-                    <li>Pay only when you need - no commitment</li>
-                </ul>
-            </div>
+            <!-- Pro Tier -->
+            <div class="pricing-card featured">
+                <div class="featured-badge">BEST VALUE</div>
+                <div class="plan-name">PresPilot Pro</div>
+                <div class="plan-subtitle">Auto-starts after 3-day trial</div>
+                <div class="price">$4.99<span class="price-period">/month</span></div>
 
-            <button id="subscribe-btn" class="btn">Buy 1 Presentation - $0.99</button>
+                <div class="features">
+                    <ul>
+                        <li><span class="icon star">&#9733;</span> <strong>3 presentations per month</strong></li>
+                        <li><span class="icon check">&#10003;</span> AI-generated professional slides</li>
+                        <li><span class="icon check">&#10003;</span> All 20+ themes available</li>
+                        <li><span class="icon check">&#10003;</span> Detailed speaker notes</li>
+                        <li><span class="icon check">&#10003;</span> <strong>Download as PowerPoint</strong></li>
+                        <li><span class="icon check">&#10003;</span> <strong>No watermarks</strong></li>
+                        <li><span class="icon check">&#10003;</span> Trial presentation unlocked!</li>
+                    </ul>
+                </div>
+
+                <button id="subscribe-btn" class="btn btn-primary">Start Free Trial</button>
+            </div>
+        </div>
+
+        <div class="comparison-note">
+            <strong>How it works:</strong> Start your 3-day free trial with card info. After 3 days, $4.99/month auto-starts with 3 presentations per month. Cancel anytime.
         </div>
 
         <div class="back-link">
-            <a href="/" onclick="navigateHome(); return false;">← Back to Home</a>
+            <a href="/">&#8592; Back to Home</a>
         </div>
-
-        <a href="mailto:support@prespilot.com" style="display: block; text-align: center; margin-top: 2rem; padding: 0.875rem 2rem; background: #f59e0b; color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600; transition: all 0.3s; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); max-width: 300px; margin-left: auto; margin-right: auto;">
-            📧 Email Support
-        </a>
     </div>
 
     <script>
-        // Force HTTPS in production to prevent security warnings
+        // Force HTTPS in production
         let API_URL;
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
             API_URL = 'http://localhost:5001';
         } else {
             API_URL = window.location.origin.replace('http://', 'https://');
-        }
-
-        function navigateHome() {
-            window.location.href = '/';
         }
 
         document.getElementById('subscribe-btn').addEventListener('click', async () => {
@@ -236,13 +308,12 @@
             btn.innerHTML = 'Processing<span class="loading"></span>';
 
             try {
-                const response = await fetch(`${API_URL}/api/payment/create-checkout-session`, {
+                const response = await fetch(`${API_URL}/api/payment/create-subscription`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    credentials: 'include',
-                    body: JSON.stringify({})
+                    credentials: 'include'
                 });
 
                 const data = await response.json();
@@ -251,15 +322,21 @@
                     // Redirect to Stripe checkout
                     window.location.href = data.url;
                 } else {
+                    // If not logged in, redirect to app to login first
+                    if (response.status === 401) {
+                        alert('Please sign in first to subscribe.');
+                        window.location.href = '/app.html';
+                        return;
+                    }
                     alert(data.error || 'Failed to create checkout session. Please try again.');
                     btn.disabled = false;
-                    btn.textContent = 'Buy Now - $0.99';
+                    btn.textContent = 'Start Free Trial';
                 }
             } catch (error) {
                 console.error('Error:', error);
                 alert('Network error. Please check your connection and try again.');
                 btn.disabled = false;
-                btn.textContent = 'Buy Now - $0.99';
+                btn.textContent = 'Start Free Trial';
             }
         });
     </script>

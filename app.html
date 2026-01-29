@@ -509,7 +509,7 @@
             </form>
 
             <button class="link-button" onclick="showForgotPasswordModal()">Forgot Password?</button>
-            <button class="link-button" onclick="window.location.href='/subscribe.html'">Create Account - Buy Now</button>
+            <button class="link-button" onclick="window.location.href='/subscribe.html'">Create Account - Start Free Trial</button>
 
             <a href="mailto:support@prespilot.com" style="display: block; text-align: center; margin-top: 2rem; padding: 0.875rem 2rem; background: #FF8C00; color: white; text-decoration: none; border-radius: 12px; font-weight: 600; transition: all 0.3s; box-shadow: 0 4px 12px rgba(255, 140, 0, 0.3);">
                 📧 Email Support
@@ -522,7 +522,7 @@
         <div class="card">
             <div class="logo">
                 <h1>Create Account</h1>
-                <p>Subscribe to start creating presentations!</p>
+                <p>Start your 3-day free trial!</p>
                 <a href="/landing.html" style="display: inline-block; margin-top: 10px; color: #f59e0b; text-decoration: none; font-size: 0.9rem; opacity: 0.8; transition: opacity 0.3s;">
                     ← Back to Home
                 </a>
@@ -542,7 +542,7 @@
                     <small>Password must be at least 6 characters</small>
                 </div>
 
-                <button type="submit" class="btn btn-primary">Create Account</button>
+                <button type="submit" class="btn btn-primary">Create Account & Start Trial</button>
             </form>
 
             <button class="link-button" onclick="showPage('signin-page')">Already have an account? Sign In</button>
@@ -613,13 +613,17 @@
             </div>
 
             <div id="generations-display" class="generations-counter">
-                <h3>Credits Remaining</h3>
+                <h3 id="generations-label">Generations</h3>
                 <div class="count">-</div>
             </div>
 
             <div id="upgrade-banner" class="upgrade-banner" style="display: none;">
-                You need credits to generate presentations. Only $0.99 per presentation!
-                <button class="btn btn-primary" style="margin-top: 10px;" onclick="purchaseGeneration()">Buy Credit - $0.99</button>
+                <span id="upgrade-message">Start your free trial!</span>
+                <button class="btn btn-primary" style="margin-top: 10px;" onclick="subscribe()">Start Free Trial</button>
+            </div>
+
+            <div id="free-tier-notice" style="display: none; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px; margin-bottom: 15px; font-size: 14px; color: #856404;">
+                <strong>Free Preview:</strong> Your presentation will have watermarks and cannot be downloaded. <a href="#" onclick="subscribe(); return false;" style="color: #0056b3;">Start your free trial</a> to download without watermarks!
             </div>
             
             <div id="topic-error" class="error-message"></div>
@@ -816,6 +820,46 @@
         </div>
     </div>
 
+    <!-- Presentation Viewer Page (for free users with watermarked previews) -->
+    <div id="viewer-page" class="page">
+        <div class="card" style="max-width: 800px;">
+            <div class="logo">
+                <h1 id="viewer-title">Your Presentation</h1>
+                <p>Preview with watermark</p>
+            </div>
+
+            <!-- Subscribe banner for free users -->
+            <div id="viewer-subscribe-banner" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center;">
+                <h3 style="margin: 0 0 10px 0;">Want to download this presentation?</h3>
+                <p style="margin: 0 0 15px 0; opacity: 0.9;">Subscribe for $4.99/month to download without watermarks + get 3 presentations per month!</p>
+                <button class="btn" style="background: white; color: #667eea; font-weight: bold;" onclick="subscribe()">Subscribe Now - $4.99/month</button>
+            </div>
+
+            <!-- Slide viewer -->
+            <div id="slide-viewer" style="background: #f5f5f5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <div id="slide-container" style="text-align: center; min-height: 400px; display: flex; align-items: center; justify-content: center;">
+                    <img id="current-slide" src="" alt="Slide preview" style="max-width: 100%; max-height: 500px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                </div>
+                <div id="slide-loading" style="text-align: center; display: none;">
+                    <div class="spinner" style="margin: 50px auto;"></div>
+                    <p>Loading slides...</p>
+                </div>
+                <div id="slide-controls" style="display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="prevSlide()" id="prev-slide-btn" style="padding: 10px 20px;">← Previous</button>
+                    <span id="slide-counter" style="font-weight: bold; font-size: 16px;">1 / 1</span>
+                    <button class="btn btn-secondary" onclick="nextSlide()" id="next-slide-btn" style="padding: 10px 20px;">Next →</button>
+                </div>
+            </div>
+
+            <!-- Download button (hidden for free users, shown for subscribers) -->
+            <button id="viewer-download-btn" class="btn btn-primary" onclick="downloadFromViewer()" style="display: none; margin-bottom: 15px;">
+                Download Presentation
+            </button>
+
+            <button class="btn btn-secondary" onclick="goHome()">Create Another Presentation</button>
+        </div>
+    </div>
+
     <!-- Success Modal -->
     <div id="success-modal" class="modal">
         <div class="modal-content">
@@ -1003,13 +1047,37 @@
                     currentUser = data.user;
                     updateGenerationsDisplay();
 
-                    // Check if user has credits remaining
-                    const remaining = currentUser.generations_limit - currentUser.generations_used;
-                    if (remaining > 0) {
-                        showPage('topic-page');
+                    const status = currentUser.subscription_status;
+
+                    // Trial and subscriber users go to topic page
+                    if (status === 'trial' || status === 'subscriber') {
+                        const remaining = currentUser.generations_limit - currentUser.generations_used;
+                        const freeUsed = currentUser.free_generation_used || 0;
+                        if (status === 'trial' && freeUsed === 0) {
+                            showPage('topic-page');
+                        } else if (status === 'subscriber' && remaining > 0) {
+                            showPage('topic-page');
+                        } else {
+                            showPage('topic-page'); // Show topic page with upgrade banner
+                        }
+                    } else if (status === 'free') {
+                        // Free user - prompt to start trial
+                        const freeUsed = currentUser.free_generation_used || 0;
+                        if (freeUsed === 0) {
+                            // Has unused free gen, show topic page with trial prompt
+                            showPage('topic-page');
+                        } else {
+                            // Free gen used - show topic page with trial prompt in upgrade banner
+                            showPage('topic-page');
+                        }
                     } else {
-                        // No credits - show payment page
-                        showPage('subscription-page');
+                        // Legacy/other status
+                        const remaining = currentUser.generations_limit - currentUser.generations_used;
+                        if (remaining > 0) {
+                            showPage('topic-page');
+                        } else {
+                            showPage('topic-page');
+                        }
                     }
                 } else {
                     document.getElementById('signin-error').textContent = data.error;
@@ -1037,12 +1105,8 @@
 
                 if (response.ok) {
                     currentUser = data.user;
-                    showSuccessModal('Account created successfully! Purchase credits to start creating presentations.');
-                    setTimeout(() => {
-                        closeModal();
-                        updateGenerationsDisplay();
-                        showPage('subscription-page');
-                    }, 2000);
+                    // Immediately redirect to Stripe Checkout for free trial (card collection)
+                    subscribe();
                 } else {
                     document.getElementById('signup-error').textContent = data.error;
                     document.getElementById('signup-error').classList.add('active');
@@ -1067,17 +1131,84 @@
 
         function updateGenerationsDisplay() {
             if (currentUser) {
-                const remaining = currentUser.generations_limit - currentUser.generations_used;
-                document.querySelector('.generations-counter .count').textContent = remaining;
+                const status = currentUser.subscription_status;
+                const freeUsed = currentUser.free_generation_used || 0;
+                const generationsUsed = currentUser.generations_used || 0;
+                const generationsLimit = currentUser.generations_limit || 1;
+                const countEl = document.querySelector('.generations-counter .count');
+                const labelEl = document.getElementById('generations-label');
+                const upgradeBanner = document.getElementById('upgrade-banner');
+                const upgradeMessage = document.getElementById('upgrade-message');
+                const freeTierNotice = document.getElementById('free-tier-notice');
 
-                // Show purchase banner when user has no credits
-                if (remaining <= 0) {
-                    document.getElementById('upgrade-banner').style.display = 'block';
+                if (status === 'subscriber') {
+                    // Subscriber: show monthly remaining
+                    const remaining = generationsLimit - generationsUsed;
+                    countEl.textContent = remaining;
+                    labelEl.textContent = 'Monthly Credits';
+                    upgradeBanner.style.display = 'none';
+                    freeTierNotice.style.display = 'none';
+                } else if (status === 'trial') {
+                    // Trial user
+                    if (freeUsed === 0) {
+                        countEl.textContent = '1';
+                        labelEl.textContent = 'Free Trial Generation';
+                        upgradeBanner.style.display = 'none';
+                        freeTierNotice.style.display = 'block';
+                        freeTierNotice.innerHTML = '<strong>Free Trial:</strong> Your presentation will have watermarks. Your subscription starts soon with full downloads!';
+                    } else {
+                        countEl.textContent = '0';
+                        labelEl.textContent = 'Trial Generation Used';
+                        upgradeMessage.textContent = 'Your subscription starts soon with 3 presentations per month.';
+                        upgradeBanner.style.display = 'block';
+                        // Change upgrade banner button to informational
+                        const bannerBtn = upgradeBanner.querySelector('.btn');
+                        if (bannerBtn) {
+                            bannerBtn.textContent = 'Subscription starts soon';
+                            bannerBtn.onclick = null;
+                            bannerBtn.style.opacity = '0.7';
+                            bannerBtn.style.cursor = 'default';
+                        }
+                        freeTierNotice.style.display = 'none';
+                    }
+                } else if (status === 'free') {
+                    // Free tier
+                    if (freeUsed === 0) {
+                        // Has free generation available
+                        countEl.textContent = '1';
+                        labelEl.textContent = 'Free Generation';
+                        upgradeBanner.style.display = 'none';
+                        freeTierNotice.style.display = 'block';
+                        freeTierNotice.innerHTML = '<strong>Free Preview:</strong> Your presentation will have watermarks and cannot be downloaded. <a href="#" onclick="subscribe(); return false;" style="color: #0056b3;">Start your free trial</a> to download without watermarks!';
+                    } else {
+                        // Free generation used
+                        countEl.textContent = '0';
+                        labelEl.textContent = 'Free Generation Used';
+                        upgradeMessage.textContent = 'You\'ve used your free generation! Start your 3-day free trial to create more presentations.';
+                        upgradeBanner.style.display = 'block';
+                        // Update upgrade banner button
+                        const bannerBtn = upgradeBanner.querySelector('.btn');
+                        if (bannerBtn) {
+                            bannerBtn.textContent = 'Start Free Trial';
+                            bannerBtn.onclick = function() { subscribe(); };
+                        }
+                        freeTierNotice.style.display = 'none';
+                    }
                 } else {
-                    document.getElementById('upgrade-banner').style.display = 'none';
+                    // Legacy status (premium, active, cancelled) - show credits
+                    const remaining = generationsLimit - generationsUsed;
+                    countEl.textContent = remaining;
+                    labelEl.textContent = 'Credits Remaining';
+                    if (remaining <= 0) {
+                        upgradeMessage.textContent = 'You\'ve used all your credits! Subscribe for monthly access.';
+                        upgradeBanner.style.display = 'block';
+                    } else {
+                        upgradeBanner.style.display = 'none';
+                    }
+                    freeTierNotice.style.display = 'none';
                 }
 
-                // Hide cancel button (no longer needed for pay-per-generation)
+                // Hide cancel button (handled in subscription management)
                 const cancelBtn = document.getElementById('cancel-subscription-btn');
                 if (cancelBtn) {
                     cancelBtn.style.display = 'none';
@@ -1113,9 +1244,34 @@
             }
         }
 
+        async function subscribe() {
+            try {
+                // Create Stripe subscription checkout session
+                const response = await fetch(`${API_URL}/api/payment/create-subscription`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.url) {
+                    // Redirect to Stripe Checkout for subscription
+                    window.location.href = data.url;
+                } else {
+                    showErrorModal(data.error || 'Failed to create subscription checkout');
+                }
+            } catch (error) {
+                console.error('Subscription checkout error:', error);
+                showErrorModal('Failed to start subscription checkout. Please try again.');
+            }
+        }
+
         // Alias for backwards compatibility
         async function upgradeSubscription() {
-            return purchaseGeneration();
+            return subscribe();
         }
 
         async function cancelSubscription() {
@@ -1525,20 +1681,63 @@
                 console.log('=== RESPONSE RECEIVED ===');
                 console.log('Status:', response.status);
                 console.log('Status Text:', response.statusText);
-                console.log('Headers:', response.headers);
+                console.log('Content-Type:', response.headers.get('content-type'));
                 console.log('OK:', response.ok);
 
                 if (!response.ok) {
                     console.error('Response not OK, trying to parse error...');
                     return response.json().then(err => {
                         console.error('Error from server:', err);
+                        // Check if subscription is required
+                        if (err.subscription_required) {
+                            throw new Error('SUBSCRIPTION_REQUIRED:' + (err.error || 'Subscribe to generate more presentations'));
+                        }
                         throw new Error(err.error || 'Failed to generate presentation');
                     });
                 }
+
+                // Check content type - JSON means preview mode for free users
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    console.log('Received JSON response (preview mode for free user)');
+                    return response.json().then(data => {
+                        return { type: 'preview', data: data };
+                    });
+                }
+
                 console.log('Response OK, converting to blob...');
-                return response.blob();
+                return response.blob().then(blob => {
+                    return { type: 'download', blob: blob };
+                });
             })
-            .then(blob => {
+            .then(result => {
+                if (result.type === 'preview') {
+                    // Free user - show viewer instead of downloading
+                    console.log('=== PREVIEW MODE ===');
+                    console.log('Presentation ID:', result.data.presentation_id);
+                    console.log('Viewer URL:', result.data.viewer_url);
+
+                    // Store presentation ID for viewer
+                    window.currentPresentationId = result.data.presentation_id;
+
+                    // Refresh user data to update generations counter
+                    fetch(`${API_URL}/api/auth/me`, { credentials: 'include' })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.user) {
+                                currentUser = data.user;
+                                updateGenerationsDisplay();
+                            }
+                        })
+                        .catch(err => console.error('Failed to refresh user data:', err));
+
+                    // Show the viewer page
+                    loadPresentationViewer(result.data.presentation_id);
+                    return;
+                }
+
+                // Subscriber - download the file
+                const blob = result.blob;
                 console.log('=== BLOB RECEIVED ===');
                 console.log('Blob size:', blob.size, 'bytes');
                 console.log('Blob type:', blob.type);
@@ -1622,6 +1821,147 @@
             showPage('topic-page');
         }
 
+        // ==================== PRESENTATION VIEWER FUNCTIONS ====================
+
+        let viewerSlides = [];
+        let currentSlideIndex = 0;
+        let viewerPresentationId = null;
+
+        async function loadPresentationViewer(presentationId) {
+            viewerPresentationId = presentationId;
+            currentSlideIndex = 0;
+
+            // Show viewer page with loading state
+            showPage('viewer-page');
+            document.getElementById('slide-loading').style.display = 'block';
+            document.getElementById('slide-container').style.display = 'none';
+            document.getElementById('slide-controls').style.display = 'none';
+
+            try {
+                // Fetch presentation info
+                const response = await fetch(`${API_URL}/api/presentations/${presentationId}/info`, {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load presentation');
+                }
+
+                const data = await response.json();
+                console.log('Presentation info:', data);
+
+                // Update title
+                document.getElementById('viewer-title').textContent = data.title || 'Your Presentation';
+
+                // Store slides
+                viewerSlides = data.slides || [];
+
+                // Update subscribe banner and download button based on subscription status
+                const subscribeBanner = document.getElementById('viewer-subscribe-banner');
+                const downloadBtn = document.getElementById('viewer-download-btn');
+
+                if (data.is_downloadable) {
+                    // Subscriber - hide subscribe banner, show download button
+                    subscribeBanner.style.display = 'none';
+                    downloadBtn.style.display = 'block';
+                } else {
+                    // Free user - show subscribe banner, hide download button
+                    subscribeBanner.style.display = 'block';
+                    downloadBtn.style.display = 'none';
+                }
+
+                // Load first slide
+                if (viewerSlides.length > 0) {
+                    loadSlide(0);
+                    document.getElementById('slide-loading').style.display = 'none';
+                    document.getElementById('slide-container').style.display = 'flex';
+                    document.getElementById('slide-controls').style.display = 'flex';
+                    updateSlideCounter();
+                } else {
+                    document.getElementById('slide-loading').innerHTML = '<p>No slides available</p>';
+                }
+
+            } catch (error) {
+                console.error('Error loading presentation:', error);
+                document.getElementById('slide-loading').innerHTML = '<p style="color: #dc3545;">Failed to load presentation. Please try again.</p>';
+            }
+        }
+
+        function loadSlide(index) {
+            if (index < 0 || index >= viewerSlides.length) return;
+
+            currentSlideIndex = index;
+            const slideImg = document.getElementById('current-slide');
+            const slideNum = index + 1;
+
+            // Load slide image from API
+            slideImg.src = `${API_URL}/api/presentations/${viewerPresentationId}/slide/${slideNum}`;
+            slideImg.onerror = function() {
+                this.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450"><rect fill="%23f0f0f0" width="800" height="450"/><text x="400" y="225" text-anchor="middle" fill="%23999" font-size="24">Slide not available</text></svg>';
+            };
+
+            updateSlideCounter();
+        }
+
+        function updateSlideCounter() {
+            document.getElementById('slide-counter').textContent = `${currentSlideIndex + 1} / ${viewerSlides.length}`;
+
+            // Disable/enable navigation buttons
+            document.getElementById('prev-slide-btn').disabled = currentSlideIndex === 0;
+            document.getElementById('next-slide-btn').disabled = currentSlideIndex === viewerSlides.length - 1;
+        }
+
+        function prevSlide() {
+            if (currentSlideIndex > 0) {
+                loadSlide(currentSlideIndex - 1);
+            }
+        }
+
+        function nextSlide() {
+            if (currentSlideIndex < viewerSlides.length - 1) {
+                loadSlide(currentSlideIndex + 1);
+            }
+        }
+
+        async function downloadFromViewer() {
+            if (!viewerPresentationId) {
+                showErrorModal('No presentation to download');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/presentations/${viewerPresentationId}/download`, {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    if (err.subscription_required) {
+                        showErrorModal('Subscribe to download this presentation without watermarks.');
+                        return;
+                    }
+                    throw new Error(err.error || 'Download failed');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `presentation_${viewerPresentationId}.pptx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                showSuccessModal('✅ Presentation Downloaded Successfully!');
+            } catch (error) {
+                console.error('Download error:', error);
+                showErrorModal('Failed to download: ' + error.message);
+            }
+        }
+
+        // ==================== END VIEWER FUNCTIONS ====================
+
         // Check authentication on load
         window.addEventListener('load', async () => {
             try {
@@ -1634,20 +1974,44 @@
                     currentUser = data.user;
                     updateGenerationsDisplay();
 
-                    // Check if coming from payment success (hash = #generate)
-                    const fromPayment = window.location.hash === '#generate';
+                    // Check if we're on a /view/<id> URL
+                    const viewMatch = window.location.pathname.match(/\/view\/(\d+)/);
+                    if (viewMatch) {
+                        const presentationId = parseInt(viewMatch[1]);
+                        loadPresentationViewer(presentationId);
+                        return;
+                    }
 
-                    // Check if user has credits remaining
+                    // Check if coming from payment/subscription success
+                    const fromPayment = window.location.hash === '#generate';
+                    const fromSubscription = window.location.pathname.includes('subscription-success');
+
+                    // Determine if user can generate
+                    const status = currentUser.subscription_status;
+                    const freeUsed = currentUser.free_generation_used || 0;
                     const remaining = currentUser.generations_limit - currentUser.generations_used;
-                    if (remaining > 0 || fromPayment) {
+
+                    let canGenerate = false;
+                    if (status === 'subscriber') {
+                        canGenerate = remaining > 0;
+                    } else if (status === 'trial') {
+                        canGenerate = freeUsed === 0;
+                    } else if (status === 'free') {
+                        canGenerate = freeUsed === 0;
+                    } else {
+                        // Legacy status
+                        canGenerate = remaining > 0;
+                    }
+
+                    if (canGenerate || fromPayment || fromSubscription) {
                         showPage('topic-page');
-                        // Clear the hash
+                        // Clear the hash/path
                         if (fromPayment) {
                             history.replaceState(null, '', '/app.html');
                         }
                     } else {
-                        // No credits - show payment page
-                        showPage('subscription-page');
+                        // No credits/free gen used - show upgrade prompt on topic page
+                        showPage('topic-page');
                     }
                 }
             } catch (error) {
